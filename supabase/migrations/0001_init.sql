@@ -1,5 +1,6 @@
--- FaliJedan — initial schema, RLS, triggers, seed.
--- Run in Supabase SQL Editor (full file, once).
+-- FaliJedan — full initial schema.
+-- Run this once on a fresh Supabase project. Replaces 0001..0008 from the
+-- iterative dev history (squashed into a single source of truth).
 
 -- ============================================================================
 -- EXTENSIONS
@@ -46,7 +47,7 @@ create table if not exists cities (
 );
 
 -- ============================================================================
--- PLAYERS (extends auth.users)
+-- PLAYERS
 -- ============================================================================
 create table if not exists players (
   id                 uuid primary key references auth.users(id) on delete cascade,
@@ -187,6 +188,30 @@ create table if not exists availability (
 );
 
 -- ============================================================================
+-- HELPER FUNCTION: chat read (used by RLS — realtime evaluates better against
+-- a SECURITY DEFINER function than against cross-table EXISTS)
+-- ============================================================================
+create or replace function public.can_access_slot_chat(p_slot_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select
+    exists (
+      select 1 from slots
+      where id = p_slot_id and organizer_id = auth.uid()
+    )
+    or exists (
+      select 1 from applications
+      where slot_id = p_slot_id
+        and player_id = auth.uid()
+        and status = 'accepted'
+    );
+$$;
+
+-- ============================================================================
 -- ROW LEVEL SECURITY
 -- ============================================================================
 alter table countries     enable row level security;
@@ -200,16 +225,13 @@ alter table bans          enable row level security;
 alter table slot_chat     enable row level security;
 alter table availability  enable row level security;
 
--- Static reference tables: anyone reads
 drop policy if exists countries_read on countries;
 create policy countries_read on countries for select using (true);
 
 drop policy if exists cities_read on cities;
 create policy cities_read on cities for select using (true);
 
--- ----------------------------------------------------------------------------
--- PLAYERS: public read, owner writes
--- ----------------------------------------------------------------------------
+-- PLAYERS
 drop policy if exists players_read on players;
 create policy players_read on players for select using (true);
 
@@ -221,9 +243,7 @@ drop policy if exists players_update_self on players;
 create policy players_update_self on players
   for update using (auth.uid() = id) with check (auth.uid() = id);
 
--- ----------------------------------------------------------------------------
--- SLOTS: anyone reads non-cancelled, organizer writes own
--- ----------------------------------------------------------------------------
+-- SLOTS
 drop policy if exists slots_read on slots;
 create policy slots_read on slots for select using (true);
 
@@ -239,9 +259,7 @@ drop policy if exists slots_delete_organizer on slots;
 create policy slots_delete_organizer on slots
   for delete using (auth.uid() = organizer_id);
 
--- ----------------------------------------------------------------------------
--- APPLICATIONS: player sees own, organizer sees apps to own slots
--- ----------------------------------------------------------------------------
+-- APPLICATIONS
 drop policy if exists applications_read on applications;
 create policy applications_read on applications for select using (
   auth.uid() = player_id
@@ -267,9 +285,7 @@ drop policy if exists applications_delete_self on applications;
 create policy applications_delete_self on applications
   for delete using (auth.uid() = player_id);
 
--- ----------------------------------------------------------------------------
--- APPEARANCES: organizer of slot writes; everyone reads
--- ----------------------------------------------------------------------------
+-- APPEARANCES
 drop policy if exists appearances_read on appearances;
 create policy appearances_read on appearances for select using (true);
 
@@ -285,10 +301,7 @@ create policy appearances_update_organizer on appearances
     exists (select 1 from slots s where s.id = slot_id and s.organizer_id = auth.uid())
   );
 
--- ----------------------------------------------------------------------------
--- NO_SHOW_LOG / BANS: server-side only (service role bypasses RLS)
--- Player can read own records.
--- ----------------------------------------------------------------------------
+-- NO_SHOW_LOG / BANS — service role only writes, player reads own
 drop policy if exists no_show_log_read_self on no_show_log;
 create policy no_show_log_read_self on no_show_log
   for select using (auth.uid() = player_id);
@@ -297,26 +310,22 @@ drop policy if exists bans_read_self on bans;
 create policy bans_read_self on bans
   for select using (auth.uid() = player_id);
 
--- ----------------------------------------------------------------------------
--- SLOT_CHAT: only accepted players + organizer
--- ----------------------------------------------------------------------------
+-- SLOT_CHAT
+-- SELECT goes through the SECURITY DEFINER helper (realtime-friendly)
 drop policy if exists slot_chat_read on slot_chat;
-create policy slot_chat_read on slot_chat for select using (
-  exists (select 1 from slots s where s.id = slot_id and s.organizer_id = auth.uid())
-  or exists (
-    select 1 from applications a
-    where a.slot_id = slot_chat.slot_id
-      and a.player_id = auth.uid()
-      and a.status = 'accepted'
-  )
-);
+create policy slot_chat_read on slot_chat
+  for select using (public.can_access_slot_chat(slot_id));
 
+-- INSERT uses inline EXISTS (transparent, doesn't pass through realtime)
 drop policy if exists slot_chat_write on slot_chat;
 create policy slot_chat_write on slot_chat
   for insert with check (
     auth.uid() = sender_id
     and (
-      exists (select 1 from slots s where s.id = slot_id and s.organizer_id = auth.uid())
+      exists (
+        select 1 from slots s
+        where s.id = slot_chat.slot_id and s.organizer_id = auth.uid()
+      )
       or exists (
         select 1 from applications a
         where a.slot_id = slot_chat.slot_id
@@ -326,9 +335,7 @@ create policy slot_chat_write on slot_chat
     )
   );
 
--- ----------------------------------------------------------------------------
--- AVAILABILITY: owner only
--- ----------------------------------------------------------------------------
+-- AVAILABILITY
 drop policy if exists availability_read_self on availability;
 create policy availability_read_self on availability
   for select using (auth.uid() = player_id);
@@ -336,6 +343,23 @@ create policy availability_read_self on availability
 drop policy if exists availability_write_self on availability;
 create policy availability_write_self on availability
   for all using (auth.uid() = player_id) with check (auth.uid() = player_id);
+
+-- ============================================================================
+-- TABLE GRANTS — RLS policies don't fire without these on a fresh project.
+-- ============================================================================
+grant usage on schema public to anon, authenticated;
+grant select on all tables in schema public to anon, authenticated;
+grant insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to anon, authenticated;
+
+alter default privileges in schema public
+  grant select on tables to anon, authenticated;
+alter default privileges in schema public
+  grant insert, update, delete on tables to authenticated;
+alter default privileges in schema public
+  grant usage, select on sequences to anon, authenticated;
+
+grant execute on function public.can_access_slot_chat(uuid) to authenticated;
 
 -- ============================================================================
 -- REALTIME publication
@@ -353,7 +377,253 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 -- ============================================================================
--- SEED: countries + major cities
+-- BUSINESS FUNCTIONS
+-- ============================================================================
+
+-- Apply to a slot — atomic with a row-level lock so concurrent applies
+-- don't oversubscribe.
+create or replace function public.apply_to_slot(p_slot_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid       uuid := auth.uid();
+  v_slot      slots%rowtype;
+  v_existing  application_status_t;
+  v_active_ban_count int;
+  v_status    text;
+begin
+  if v_uid is null then raise exception 'not_authenticated'; end if;
+
+  select count(*) into v_active_ban_count
+  from bans
+  where player_id = v_uid
+    and type = 'hard'
+    and ends_at > now();
+  if v_active_ban_count > 0 then raise exception 'banned'; end if;
+
+  select * into v_slot from slots where id = p_slot_id for update;
+  if not found then raise exception 'slot_not_found'; end if;
+
+  if v_slot.organizer_id = v_uid then raise exception 'cannot_apply_own'; end if;
+  if v_slot.status in ('cancelled', 'done') then raise exception 'slot_closed'; end if;
+
+  select status into v_existing
+  from applications
+  where slot_id = p_slot_id and player_id = v_uid;
+  if found then raise exception 'already_applied'; end if;
+
+  if v_slot.filled_spots < v_slot.total_spots then
+    v_status := 'accepted';
+    insert into applications (slot_id, player_id, status)
+    values (p_slot_id, v_uid, 'accepted');
+
+    update slots
+    set filled_spots = filled_spots + 1,
+        status = case
+          when filled_spots + 1 >= total_spots then 'full'::slot_status_t
+          else status
+        end
+    where id = p_slot_id;
+  else
+    v_status := 'waitlist';
+    insert into applications (slot_id, player_id, status)
+    values (p_slot_id, v_uid, 'waitlist');
+  end if;
+
+  return v_status;
+end;
+$$;
+
+grant execute on function public.apply_to_slot(uuid) to authenticated;
+
+-- Withdraw from a slot. Promotes first waitlist applicant if a spot frees up.
+-- Late cancel (<2h before kickoff) logs to no_show_log + reduces reliability.
+create or replace function public.withdraw_from_slot(p_slot_id uuid)
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid          uuid := auth.uid();
+  v_slot         slots%rowtype;
+  v_app          applications%rowtype;
+  v_next         applications%rowtype;
+  v_hours        numeric;
+  v_was_accepted bool;
+  v_late         bool;
+begin
+  if v_uid is null then raise exception 'not_authenticated'; end if;
+
+  select * into v_slot from slots where id = p_slot_id for update;
+  if not found then raise exception 'slot_not_found'; end if;
+
+  select * into v_app from applications
+   where slot_id = p_slot_id and player_id = v_uid;
+  if not found then raise exception 'not_applied'; end if;
+
+  v_was_accepted := v_app.status = 'accepted';
+  v_hours := extract(epoch from (v_slot.scheduled_at - now())) / 3600;
+  v_late := v_was_accepted and v_hours < 2 and v_hours > 0;
+
+  delete from applications where id = v_app.id;
+
+  if v_was_accepted then
+    select * into v_next from applications
+     where slot_id = p_slot_id and status = 'waitlist'
+     order by applied_at asc limit 1;
+
+    if found then
+      update applications set status = 'accepted' where id = v_next.id;
+    else
+      update slots
+      set filled_spots = greatest(0, filled_spots - 1),
+          status = case
+            when status = 'full'::slot_status_t then 'open'::slot_status_t
+            else status
+          end
+      where id = p_slot_id;
+    end if;
+  end if;
+
+  if v_late then
+    insert into no_show_log (player_id, slot_id, type)
+    values (v_uid, p_slot_id, 'late_cancel');
+
+    update players
+    set reliability_score = greatest(0, reliability_score - 3)
+    where id = v_uid;
+  end if;
+
+  return json_build_object('late', v_late, 'was_accepted', v_was_accepted);
+end;
+$$;
+
+grant execute on function public.withdraw_from_slot(uuid) to authenticated;
+
+-- Confirm appearances after a match. Logs no-shows, decays reliability,
+-- bans on 4+ no-shows in 30d.
+create or replace function public.confirm_appearances(
+  p_slot_id uuid,
+  p_entries jsonb -- [{ player_id: uuid, showed_up: bool }, ...]
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid       uuid := auth.uid();
+  v_slot      slots%rowtype;
+  v_entry     jsonb;
+  v_player    uuid;
+  v_showed    bool;
+  v_count_30d int;
+begin
+  if v_uid is null then raise exception 'not_authenticated'; end if;
+
+  select * into v_slot from slots where id = p_slot_id;
+  if not found then raise exception 'slot_not_found'; end if;
+  if v_slot.organizer_id <> v_uid then raise exception 'not_organizer'; end if;
+
+  for v_entry in select * from jsonb_array_elements(p_entries) loop
+    v_player := (v_entry->>'player_id')::uuid;
+    v_showed := (v_entry->>'showed_up')::bool;
+
+    insert into appearances (slot_id, player_id, showed_up, confirmed_at)
+    values (p_slot_id, v_player, v_showed, now())
+    on conflict (slot_id, player_id)
+      do update set showed_up = excluded.showed_up,
+                    confirmed_at = excluded.confirmed_at;
+
+    if not v_showed then
+      insert into no_show_log (player_id, slot_id, type)
+      select v_player, p_slot_id, 'no_show'
+      where not exists (
+        select 1 from no_show_log
+        where player_id = v_player and slot_id = p_slot_id and type = 'no_show'
+      );
+
+      select count(*) into v_count_30d
+      from no_show_log
+      where player_id = v_player
+        and type in ('no_show', 'late_cancel')
+        and created_at > now() - interval '30 days';
+
+      update players
+      set no_show_count_30d = v_count_30d,
+          reliability_score = greatest(0, 100 - (v_count_30d * 10))
+      where id = v_player;
+
+      if v_count_30d >= 4 then
+        insert into bans (player_id, type, reason, ends_at, no_show_count)
+        values (
+          v_player,
+          'hard',
+          '4+ no-shows u 30 dana',
+          now() + interval '14 days',
+          v_count_30d
+        );
+        update players set ban_until = now() + interval '14 days' where id = v_player;
+      end if;
+    end if;
+  end loop;
+
+  update slots set status = 'done' where id = p_slot_id;
+end;
+$$;
+
+grant execute on function public.confirm_appearances(uuid, jsonb) to authenticated;
+
+-- Organizer kicks a player. Promotes first waitlist applicant if accepted.
+create or replace function public.kick_from_slot(p_application_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid    uuid := auth.uid();
+  v_app    applications%rowtype;
+  v_slot   slots%rowtype;
+  v_next   applications%rowtype;
+begin
+  if v_uid is null then raise exception 'not_authenticated'; end if;
+
+  select * into v_app from applications where id = p_application_id;
+  if not found then raise exception 'application_not_found'; end if;
+
+  select * into v_slot from slots where id = v_app.slot_id for update;
+  if v_slot.organizer_id <> v_uid then raise exception 'not_organizer'; end if;
+
+  delete from applications where id = p_application_id;
+
+  if v_app.status = 'accepted' then
+    select * into v_next from applications
+    where slot_id = v_slot.id and status = 'waitlist'
+    order by applied_at asc limit 1;
+
+    if found then
+      update applications set status = 'accepted' where id = v_next.id;
+    else
+      update slots
+      set filled_spots = greatest(0, filled_spots - 1),
+          status = case when status = 'full'::slot_status_t
+                        then 'open'::slot_status_t
+                        else status end
+      where id = v_slot.id;
+    end if;
+  end if;
+end;
+$$;
+
+grant execute on function public.kick_from_slot(uuid) to authenticated;
+
+-- ============================================================================
+-- SEED — countries + major cities
 -- ============================================================================
 insert into countries (name, code) values
   ('Bosna i Hercegovina', 'BA'),

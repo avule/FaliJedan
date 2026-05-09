@@ -10,3 +10,12 @@ build/
 .vercel
 next-env.d.ts
 *.tsbuildinfo
+
+# Claude Code local config (permissions cache)
+.claude/
+
+# Stray screenshots / scratch files in repo root
+/WhatsApp*.jpeg
+/WhatsApp*.jpg
+/WhatsApp*.png
+/Screenshot*.png
