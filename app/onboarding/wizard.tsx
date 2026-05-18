@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { AvatarUpload } from "@/components/profile/avatar-upload";
 import { cn } from "@/lib/utils/cn";
 import { SPORTS, LEVELS } from "@/lib/sports";
 import {
@@ -12,7 +13,14 @@ import {
 } from "@/lib/actions/onboarding";
 import type { Country, City, Level, SportKey } from "@/types/database";
 
-type Props = { countries: Country[]; cities: City[] };
+type Props = {
+  countries: Country[];
+  cities: City[];
+  userId: string;
+  userName: string;
+};
+
+const TOTAL_STEPS = 4;
 
 function FinishButton() {
   const { pending } = useFormStatus();
@@ -23,8 +31,8 @@ function FinishButton() {
   );
 }
 
-export function OnboardingWizard({ countries, cities }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+export function OnboardingWizard({ countries, cities, userId, userName }: Props) {
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [countryId, setCountryId] = useState<number | null>(null);
   const [cityId, setCityId] = useState<number | null>(null);
   const [sports, setSports] = useState<SportKey[]>([]);
@@ -45,11 +53,11 @@ export function OnboardingWizard({ countries, cities }: Props) {
   return (
     <div className="w-full max-w-2xl">
       <div className="mb-6 flex items-center justify-center gap-2">
-        {[1, 2, 3].map((n) => (
+        {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((n) => (
           <div
             key={n}
             className={cn(
-              "h-2 w-12 rounded-full transition-colors",
+              "h-2 w-10 rounded-full transition-colors",
               n <= step ? "bg-primary" : "bg-secondary"
             )}
           />
@@ -60,7 +68,7 @@ export function OnboardingWizard({ countries, cities }: Props) {
         {step === 1 && (
           <>
             <CardHeader>
-              <CardTitle>Korak 1 — Država</CardTitle>
+              <CardTitle>Korak 1 - Država</CardTitle>
               <CardDescription>Gdje igraš?</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -99,7 +107,7 @@ export function OnboardingWizard({ countries, cities }: Props) {
         {step === 2 && (
           <>
             <CardHeader>
-              <CardTitle>Korak 2 — Grad</CardTitle>
+              <CardTitle>Korak 2 - Grad</CardTitle>
               <CardDescription>Pronaći ćemo slotove u tvom gradu</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -133,16 +141,9 @@ export function OnboardingWizard({ countries, cities }: Props) {
         )}
 
         {step === 3 && (
-          <form action={formAction}>
-            <input type="hidden" name="country_id" value={countryId ?? ""} />
-            <input type="hidden" name="city_id" value={cityId ?? ""} />
-            {sports.map((s) => (
-              <input key={s} type="hidden" name="sports" value={s} />
-            ))}
-            <input type="hidden" name="level" value={level} />
-
+          <>
             <CardHeader>
-              <CardTitle>Korak 3 — Sportovi i nivo</CardTitle>
+              <CardTitle>Korak 3 - Sportovi i nivo</CardTitle>
               <CardDescription>Šta voliš da igraš?</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -196,6 +197,43 @@ export function OnboardingWizard({ countries, cities }: Props) {
                 </div>
               </div>
 
+              <div className="flex justify-between pt-2">
+                <Button variant="outline" onClick={() => setStep(2)}>
+                  Nazad
+                </Button>
+                <Button
+                  onClick={() => setStep(4)}
+                  disabled={sports.length === 0}
+                >
+                  Dalje
+                </Button>
+              </div>
+            </CardContent>
+          </>
+        )}
+
+        {step === 4 && (
+          <form action={formAction}>
+            <input type="hidden" name="country_id" value={countryId ?? ""} />
+            <input type="hidden" name="city_id" value={cityId ?? ""} />
+            {sports.map((s) => (
+              <input key={s} type="hidden" name="sports" value={s} />
+            ))}
+            <input type="hidden" name="level" value={level} />
+
+            <CardHeader>
+              <CardTitle>Korak 4 - Slika profila</CardTitle>
+              <CardDescription>
+                Opciono - možeš preskočiti i dodati kasnije.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <AvatarUpload
+                userId={userId}
+                name={userName}
+                initialUrl={null}
+              />
+
               {state?.error && (
                 <p className="text-sm text-destructive">{state.error}</p>
               )}
@@ -204,7 +242,7 @@ export function OnboardingWizard({ countries, cities }: Props) {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(3)}
                 >
                   Nazad
                 </Button>

@@ -53,7 +53,22 @@ export default async function MyApplicationsPage() {
 
   return (
     <main className="container py-6">
-      <h1 className="mb-4 text-2xl font-bold">Moje prijave</h1>
+      <div className="mb-6">
+        <p className="font-display text-xs uppercase tracking-[0.3em] text-primary">
+          Igrač
+        </p>
+        <h1 className="mt-1 font-display text-4xl uppercase tracking-tight md:text-5xl">
+          Moje prijave
+        </h1>
+        {apps.length > 0 && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            <span className="tabular text-foreground">{upcoming.length}</span>{" "}
+            predstoji ·{" "}
+            <span className="tabular text-foreground">{past.length}</span>{" "}
+            završeno
+          </p>
+        )}
+      </div>
 
       {apps.length === 0 ? (
         <Card>
@@ -109,7 +124,8 @@ function ApplicationRow({ app }: { app: AppWithSlot }) {
             <div>
               <h3 className="font-medium">{slot.title}</h3>
               <p className="text-xs text-muted-foreground">
-                {sportLabel(slot.sport)} · {levelLabel(slot.level)} ·{" "}
+                {sportLabel(slot.sport, slot.custom_sport)} ·{" "}
+                {levelLabel(slot.level)} ·{" "}
                 {formatScheduledAt(slot.scheduled_at)}
               </p>
               <p className="text-xs text-muted-foreground">

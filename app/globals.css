@@ -29,7 +29,7 @@
   }
 
   .dark {
-    /* Athletic dark — stadium at night */
+    /* Athletic dark - stadium at night */
     --background: 220 30% 4%;
     --foreground: 0 0% 98%;
     --card: 220 25% 8%;
@@ -64,9 +64,10 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "ss01", "cv11";
+    overflow-x: hidden;
   }
 
-  /* Display font defaults — uppercase looks intentional with Bebas */
+  /* Display font defaults - uppercase looks intentional with Bebas */
   .font-display {
     letter-spacing: 0.02em;
   }
@@ -96,18 +97,6 @@
     );
   }
 
-  /* Shimmer — for skeleton loaders */
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      hsl(var(--muted)) 0%,
-      hsl(var(--secondary)) 50%,
-      hsl(var(--muted)) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 2s linear infinite;
-  }
-
   /* Underline animation for nav links */
   .nav-underline {
     @apply relative;
@@ -121,7 +110,7 @@
     @apply w-full;
   }
 
-  /* Glow text — for hero numbers / score */
+  /* Glow text - for hero numbers / score */
   .text-glow {
     text-shadow: 0 0 24px hsl(var(--primary) / 0.6),
                  0 0 8px hsl(var(--primary) / 0.4);

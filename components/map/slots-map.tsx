@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import "leaflet/dist/leaflet.css";
 import { sportEmoji, sportLabel } from "@/lib/sports";
 import { formatScheduledAt } from "@/lib/utils/format";
+import { BALKAN_CENTER, BALKAN_ZOOM, CITY_ZOOM } from "@/lib/cities";
 import type { Slot } from "@/types/database";
 
 // Sport-coloured div icons (no asset deps).
@@ -29,20 +30,29 @@ function buildIcon(sport: string) {
   });
 }
 
-type Props = { slots: Slot[] };
+type Props = {
+  slots: Slot[];
+  /** Optional fallback centre when there are no slots (e.g. user's home city). */
+  fallbackCenter?: [number, number];
+};
 
-export default function SlotsMap({ slots }: Props) {
-  const center = useMemo<[number, number]>(() => {
-    if (slots.length === 0) return [43.85, 18.4]; // Sarajevo fallback
-    const lat = slots.reduce((s, x) => s + x.lat, 0) / slots.length;
-    const lng = slots.reduce((s, x) => s + x.lng, 0) / slots.length;
-    return [lat, lng];
-  }, [slots]);
+export default function SlotsMap({ slots, fallbackCenter }: Props) {
+  const { center, zoom } = useMemo(() => {
+    if (slots.length > 0) {
+      const lat = slots.reduce((s, x) => s + x.lat, 0) / slots.length;
+      const lng = slots.reduce((s, x) => s + x.lng, 0) / slots.length;
+      return { center: [lat, lng] as [number, number], zoom: CITY_ZOOM };
+    }
+    if (fallbackCenter) {
+      return { center: fallbackCenter, zoom: CITY_ZOOM };
+    }
+    return { center: BALKAN_CENTER, zoom: BALKAN_ZOOM };
+  }, [slots, fallbackCenter]);
 
   return (
     <MapContainer
       center={center}
-      zoom={13}
+      zoom={zoom}
       scrollWheelZoom
       style={{ height: "100%", width: "100%", borderRadius: "0.5rem" }}
     >
@@ -58,7 +68,7 @@ export default function SlotsMap({ slots }: Props) {
                 {sportEmoji(s.sport)} {s.title}
               </div>
               <div className="text-xs text-gray-600">
-                {sportLabel(s.sport)} · {s.location_name}
+                {sportLabel(s.sport, s.custom_sport)} · {s.location_name}
               </div>
               <div className="text-xs text-gray-600">
                 {formatScheduledAt(s.scheduled_at)}

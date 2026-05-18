@@ -3,6 +3,7 @@ import { Bebas_Neue } from "next/font/google";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Toaster } from "sonner";
+import { AmbientBackground } from "@/components/layout/ambient-background";
 import "./globals.css";
 
 const bebas = Bebas_Neue({
@@ -13,7 +14,7 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "FaliJedan — nađi partnera za rekreativni sport",
+  title: "FaliJedan - nađi partnera za rekreativni sport",
   description:
     "Organizator objavi slot, slobodni igrači se prijave. Fudbal, košarka, tenis, odbojka, padel.",
 };
@@ -29,6 +30,7 @@ export default function RootLayout({
       className={`dark ${bebas.variable} ${GeistSans.variable} ${GeistMono.variable}`}
     >
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
+        <AmbientBackground />
         {children}
         <Toaster
           theme="dark"

@@ -26,7 +26,7 @@ export function SlotChat({ slotId, meId, initial, participants }: Props) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Broadcast channel — bypasses RLS, peer-to-peer between subscribed clients.
+  // Broadcast channel - bypasses RLS, peer-to-peer between subscribed clients.
   // RSC fetches initial messages on first load; live updates ride this channel.
   useEffect(() => {
     const channel = supabase.channel(`slot-chat-${slotId}`, {

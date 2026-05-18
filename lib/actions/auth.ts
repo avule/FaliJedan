@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 const RegisterSchema = z.object({
@@ -76,5 +77,7 @@ export async function loginAction(
 export async function logoutAction() {
   const supabase = createClient();
   await supabase.auth.signOut();
+  // Clear onboarding cookie so next user starts fresh
+  cookies().delete("fj_onboarded");
   redirect("/");
 }

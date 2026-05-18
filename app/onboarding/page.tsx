@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
       supabase.from("cities").select("id, country_id, name").order("name"),
       supabase
         .from("players")
-        .select("country_id, city_id, sports, level")
+        .select("name, country_id, city_id, sports, level")
         .eq("id", user.id)
         .maybeSingle(),
     ]);
@@ -31,6 +31,8 @@ export default async function OnboardingPage() {
       <OnboardingWizard
         countries={countries ?? []}
         cities={cities ?? []}
+        userId={user.id}
+        userName={player?.name || user.email || "Igrač"}
       />
     </main>
   );

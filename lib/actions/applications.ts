@@ -6,7 +6,7 @@ import { notifyApplicationOutcome } from "@/lib/email/notify";
 
 const ERROR_MESSAGES: Record<string, string> = {
   not_authenticated: "Nisi prijavljen",
-  banned: "Banovan si — ne možeš se prijavljivati",
+  banned: "Banovan si - ne možeš se prijavljivati",
   slot_not_found: "Slot ne postoji",
   cannot_apply_own: "Ne možeš se prijaviti na svoj slot",
   slot_closed: "Slot je zatvoren",
@@ -35,7 +35,7 @@ export async function applyToSlotAction(slotId: string) {
 
   const status = data as "accepted" | "waitlist";
 
-  // Fire-and-forget email — don't await blocking.
+  // Fire-and-forget email - don't await blocking.
   if (user) {
     notifyApplicationOutcome({
       playerId: user.id,

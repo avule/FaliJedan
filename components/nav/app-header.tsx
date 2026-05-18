@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils/cn";
 
 const NAV = [
@@ -13,7 +14,13 @@ const NAV = [
   { href: "/prijave", label: "Prijave" },
 ];
 
-export function AppHeader({ name }: { name: string }) {
+export function AppHeader({
+  name,
+  avatarUrl,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+}) {
   const pathname = usePathname();
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
@@ -25,7 +32,7 @@ export function AppHeader({ name }: { name: string }) {
           href="/igraj"
           className="font-display text-2xl uppercase tracking-wider transition-colors hover:text-primary"
         >
-          Fali<span className="text-primary text-glow">Jedan</span>
+          Fali<span className="text-primary">Jedan</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
@@ -51,9 +58,7 @@ export function AppHeader({ name }: { name: string }) {
             href="/profil"
             className="hidden items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:flex"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-primary text-xs font-bold text-primary-foreground">
-              {(name || "?").charAt(0).toUpperCase()}
-            </span>
+            <Avatar src={avatarUrl} name={name} size="sm" highlight={!avatarUrl} />
             <span className="hidden md:inline">{name}</span>
           </Link>
           <form action={logoutAction}>

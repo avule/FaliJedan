@@ -10,18 +10,13 @@ import { Select } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { LocationPicker } from "@/components/map/location-picker-wrapper";
-import { SPORTS, LEVELS } from "@/lib/sports";
+import { SPORTS_FOR_SLOT, LEVELS } from "@/lib/sports";
 import {
   createSlotAction,
   type CreateSlotState,
 } from "@/lib/actions/slots";
+import { CITY_CENTERS, BALKAN_CENTER } from "@/lib/cities";
 import type { City } from "@/types/database";
-
-const CITY_CENTERS: Record<number, [number, number]> = {
-  // Will fall back to Sarajevo if city center not in this map.
-};
-
-const FALLBACK_CENTER: [number, number] = [43.85, 18.4]; // Sarajevo
 
 function SubmitButton({ disabled }: { disabled?: boolean }) {
   const { pending } = useFormStatus();
@@ -39,13 +34,16 @@ export function CreateSlotForm({ cities, defaultCityId }: Props) {
   const [lng, setLng] = useState<number | null>(null);
   const [cityId, setCityId] = useState<number | null>(defaultCityId);
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
+  const [sport, setSport] = useState<string>("football");
   const [state, formAction] = useFormState<CreateSlotState, FormData>(
     createSlotAction,
     null
   );
 
-  const center =
-    (cityId !== null && CITY_CENTERS[cityId]) || FALLBACK_CENTER;
+  // Resolve city name → coords. If user hasn't picked one, show whole region.
+  const cityName = cities.find((c) => c.id === cityId)?.name;
+  const center: [number, number] =
+    (cityName && CITY_CENTERS[cityName]) || BALKAN_CENTER;
 
   // Send datetime as ISO string (preserves timezone for the server).
   const scheduledIso = scheduledAt ? scheduledAt.toISOString() : "";
@@ -59,7 +57,7 @@ export function CreateSlotForm({ cities, defaultCityId }: Props) {
             <Input
               id="title"
               name="title"
-              placeholder="Fudbal Skenderija — fali nam jedan"
+              placeholder="npr. Mali fudbal - fali nam jedan"
               required
               minLength={3}
               maxLength={100}
@@ -69,8 +67,14 @@ export function CreateSlotForm({ cities, defaultCityId }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="sport">Sport</Label>
-              <Select id="sport" name="sport" required defaultValue="football">
-                {SPORTS.map((s) => (
+              <Select
+                id="sport"
+                name="sport"
+                required
+                value={sport}
+                onChange={(e) => setSport(e.target.value)}
+              >
+                {SPORTS_FOR_SLOT.map((s) => (
                   <option key={s.key} value={s.key}>
                     {s.emoji} {s.label}
                   </option>
@@ -88,6 +92,20 @@ export function CreateSlotForm({ cities, defaultCityId }: Props) {
               </Select>
             </div>
           </div>
+
+          {sport === "other" && (
+            <div className="space-y-2 animate-fade-in">
+              <Label htmlFor="custom_sport">Koji sport?</Label>
+              <Input
+                id="custom_sport"
+                name="custom_sport"
+                placeholder="npr. Rukomet, Badminton, Stoni tenis..."
+                required
+                minLength={2}
+                maxLength={50}
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Datum i vrijeme</Label>
@@ -134,7 +152,7 @@ export function CreateSlotForm({ cities, defaultCityId }: Props) {
             <Input
               id="location_name"
               name="location_name"
-              placeholder="SRC Skenderija, teren br. 3"
+              placeholder="npr. Sportski centar - teren br. 3"
               required
               minLength={2}
               maxLength={150}
@@ -146,7 +164,7 @@ export function CreateSlotForm({ cities, defaultCityId }: Props) {
             <Textarea
               id="description"
               name="description"
-              placeholder="Dolazimo svaki ponedjeljak, fini bal, ručnik+voda obavezno..."
+              placeholder="Dodatne informacije za igrače..."
               maxLength={500}
             />
           </div>
@@ -200,7 +218,7 @@ export function CreateSlotForm({ cities, defaultCityId }: Props) {
             }}
           />
 
-          {/* Overlay banner — hides once user picks a location */}
+          {/* Overlay banner - hides once user picks a location */}
           {lat === null && (
             <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex justify-center p-3">
               <div className="rounded-md border border-accent/60 bg-card/95 px-4 py-2 shadow-glow-accent backdrop-blur animate-fade-in">

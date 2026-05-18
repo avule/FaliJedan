@@ -1,12 +1,11 @@
-// Supabase row shapes — keep aligned with /supabase/migrations.
+// Supabase row shapes - keep aligned with /supabase/migrations.
 // Regenerate with `supabase gen types typescript` once CLI is wired up.
 
 export type SportKey =
   | "football"
   | "basketball"
-  | "tennis"
-  | "volleyball"
-  | "padel";
+  | "padel"
+  | "other";
 
 export type Level = "casual" | "mid" | "competitive";
 
@@ -52,6 +51,8 @@ export interface Slot {
   id: string;
   organizer_id: string;
   sport: SportKey;
+  /** Free-text sport name when sport === "other". Null otherwise. */
+  custom_sport: string | null;
   title: string;
   description: string | null;
   location_name: string;

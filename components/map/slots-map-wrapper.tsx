@@ -12,6 +12,12 @@ const SlotsMap = dynamic(() => import("./slots-map"), {
   ),
 });
 
-export function SlotsMapWrapper({ slots }: { slots: Slot[] }) {
-  return <SlotsMap slots={slots} />;
+export function SlotsMapWrapper({
+  slots,
+  fallbackCenter,
+}: {
+  slots: Slot[];
+  fallbackCenter?: [number, number];
+}) {
+  return <SlotsMap slots={slots} fallbackCenter={fallbackCenter} />;
 }

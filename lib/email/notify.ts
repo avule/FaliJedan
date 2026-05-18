@@ -5,7 +5,7 @@
  * Fetch the data they need from Supabase using the service client,
  * format with templates, fire-and-forget via Resend.
  *
- * All functions swallow errors — email is never allowed to break user flow.
+ * All functions swallow errors - email is never allowed to break user flow.
  */
 
 import { createServiceClient } from "@/lib/supabase/server";

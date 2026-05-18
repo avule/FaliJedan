@@ -3,8 +3,10 @@ import { SlotCard } from "@/components/slots/slot-card";
 import { FeedFilters } from "@/components/slots/feed-filters";
 import { SlotsMapWrapper } from "@/components/map/slots-map-wrapper";
 import { RealtimeRefresh } from "@/components/slots/realtime-refresh";
-import { EmptyState } from "@/components/ui/empty-state";
+import { ViewToggle } from "@/components/slots/view-toggle";
+import { EmptyFeed } from "@/components/slots/empty-feed";
 import { buttonVariants } from "@/components/ui/button";
+import { CITY_CENTERS } from "@/lib/cities";
 import Link from "next/link";
 import { addDays, endOfDay, startOfDay } from "date-fns";
 import type { Slot } from "@/types/database";
@@ -14,6 +16,7 @@ type SearchParams = {
   sport?: string;
   level?: string;
   when?: "today" | "tomorrow" | "week";
+  view?: "mapa" | "list";
 };
 
 export default async function FeedPage({
@@ -29,13 +32,26 @@ export default async function FeedPage({
   // Default city = player's home city
   const { data: me } = await supabase
     .from("players")
-    .select("city_id")
+    .select("city_id, city:cities(name)")
     .eq("id", user!.id)
-    .maybeSingle();
+    .maybeSingle<{ city_id: number | null; city: { name: string } | null }>();
 
   const cityId = searchParams.city
     ? Number(searchParams.city)
     : me?.city_id ?? null;
+
+  // Resolve city name → center coords for the map fallback
+  let mapFallback: [number, number] | undefined;
+  if (cityId) {
+    const { data: city } = await supabase
+      .from("cities")
+      .select("name")
+      .eq("id", cityId)
+      .maybeSingle();
+    if (city?.name && CITY_CENTERS[city.name]) {
+      mapFallback = CITY_CENTERS[city.name];
+    }
+  }
 
   // Date window
   const now = new Date();
@@ -78,11 +94,37 @@ export default async function FeedPage({
 
   const slotsList = (slots ?? []) as Slot[];
 
+  // Fetch accepted player previews for avatar stack on cards (bulk).
+  const slotIds = slotsList.map((s) => s.id);
+  const acceptedBySlot = new Map<
+    string,
+    { id: string; name: string | null; avatar_url: string | null }[]
+  >();
+  if (slotIds.length > 0) {
+    const { data: previewApps } = await supabase
+      .from("applications")
+      .select("slot_id, player:players(id, name, avatar_url)")
+      .in("slot_id", slotIds)
+      .eq("status", "accepted")
+      .returns<
+        {
+          slot_id: string;
+          player: { id: string; name: string | null; avatar_url: string | null } | null;
+        }[]
+      >();
+    for (const a of previewApps ?? []) {
+      if (!a.player) continue;
+      const list = acceptedBySlot.get(a.slot_id) ?? [];
+      list.push(a.player);
+      acceptedBySlot.set(a.slot_id, list);
+    }
+  }
+
   return (
     <main className="container py-6">
       <RealtimeRefresh />
 
-      <div className="mb-6 flex items-end justify-between">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="font-display text-xs uppercase tracking-[0.3em] text-primary">
             Feed
@@ -95,44 +137,62 @@ export default async function FeedPage({
             otvorenih
           </p>
         </div>
-        <Link href="/novi-slot" className={buttonVariants()}>
-          + Novi slot
-        </Link>
+        <div className="flex items-center gap-2">
+          <ViewToggle active={searchParams.view === "mapa" ? "mapa" : "list"} />
+          <Link href="/novi-slot" className={buttonVariants()}>
+            + Novi slot
+          </Link>
+        </div>
       </div>
 
       <div className="mb-6 rounded-lg border border-border bg-card/40 p-4 backdrop-blur">
         <FeedFilters cities={cities ?? []} defaultCityId={me?.city_id} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-3">
-          {slotsList.length === 0 ? (
-            <EmptyState
-              emoji="🥅"
-              title="Nema slotova"
-              description="Niko nije objavio slot po ovim filterima. Budi prvi i pokreni meč."
-              ctaHref="/novi-slot"
-              ctaLabel="+ Objavi slot"
-            />
-          ) : (
-            slotsList.map((s, i) => (
-              <div
-                key={s.id}
-                className="animate-slide-up"
-                style={{ animationDelay: `${Math.min(i * 50, 600)}ms` }}
-              >
-                <SlotCard slot={s} />
-              </div>
-            ))
-          )}
-        </div>
+      {searchParams.view === "mapa" ? (
+        // FULL MAP VIEW
+        slotsList.length === 0 ? (
+          <EmptyFeed
+            cityName={me?.city?.name ?? null}
+            sport={searchParams.sport ?? null}
+          />
+        ) : (
+          <div className="h-[calc(100vh-16rem)] min-h-[480px] overflow-hidden rounded-lg border border-border shadow-card">
+            <SlotsMapWrapper slots={slotsList} fallbackCenter={mapFallback} />
+          </div>
+        )
+      ) : (
+        // LIST VIEW (default) - list + side map on desktop
+        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+          <div className="space-y-3">
+            {slotsList.length === 0 ? (
+              <EmptyFeed
+                cityName={me?.city?.name ?? null}
+                sport={searchParams.sport ?? null}
+              />
+            ) : (
+              slotsList.map((s, i) => (
+                <div
+                  key={s.id}
+                  className="animate-slide-up"
+                  style={{ animationDelay: `${Math.min(i * 50, 600)}ms` }}
+                >
+                  <SlotCard
+                    slot={s}
+                    acceptedPreview={acceptedBySlot.get(s.id) ?? []}
+                  />
+                </div>
+              ))
+            )}
+          </div>
 
-        <div className="hidden lg:block">
-          <div className="sticky top-20 h-[420px] overflow-hidden rounded-lg border border-border shadow-card">
-            <SlotsMapWrapper slots={slotsList} />
+          <div className="hidden lg:block">
+            <div className="sticky top-20 h-[420px] overflow-hidden rounded-lg border border-border shadow-card">
+              <SlotsMapWrapper slots={slotsList} fallbackCenter={mapFallback} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }

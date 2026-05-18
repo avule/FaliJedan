@@ -16,13 +16,16 @@ export default async function AppLayout({
 
   const { data: player } = await supabase
     .from("players")
-    .select("name")
+    .select("name, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
 
   return (
     <>
-      <AppHeader name={player?.name || user.email || "Igrač"} />
+      <AppHeader
+        name={player?.name || user.email || "Igrač"}
+        avatarUrl={player?.avatar_url ?? null}
+      />
       {children}
     </>
   );

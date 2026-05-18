@@ -105,7 +105,7 @@ export function ManageSlotPanel({
   if (isCancelled) {
     return (
       <p className="mt-4 text-sm text-muted-foreground">
-        Slot otkazan — nema više akcija.
+        Slot otkazan - nema više akcija.
       </p>
     );
   }

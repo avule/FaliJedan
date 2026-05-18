@@ -24,7 +24,7 @@ export default async function NewSlotPage() {
     <main className="container py-6">
       <h1 className="mb-1 text-2xl font-bold">Novi slot</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Objavi kada i gdje igraš — igrači će se prijaviti.
+        Objavi kada i gdje igraš - igrači će se prijaviti.
       </p>
       <CreateSlotForm cities={cities ?? []} defaultCityId={me?.city_id ?? null} />
     </main>

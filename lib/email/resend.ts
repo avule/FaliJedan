@@ -2,7 +2,7 @@ import { Resend } from "resend";
 
 const apiKey = process.env.RESEND_API_KEY;
 
-// Singleton — Resend client is fine to reuse across requests.
+// Singleton - Resend client is fine to reuse across requests.
 export const resend = apiKey ? new Resend(apiKey) : null;
 
 export const EMAIL_FROM =
@@ -12,7 +12,7 @@ export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 /**
- * Fire-and-forget email sender. Never throws — email failures
+ * Fire-and-forget email sender. Never throws - email failures
  * must not break the user flow. Logs to console for ops to see.
  */
 export async function sendEmail(args: {
@@ -21,7 +21,7 @@ export async function sendEmail(args: {
   html: string;
 }) {
   if (!resend) {
-    console.warn("[email] RESEND_API_KEY not set — skipping email", args.subject);
+    console.warn("[email] RESEND_API_KEY not set - skipping email", args.subject);
     return;
   }
   try {

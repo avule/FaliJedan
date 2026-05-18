@@ -1,4 +1,4 @@
--- FaliJedan — full initial schema.
+-- FaliJedan - full initial schema.
 -- Run this once on a fresh Supabase project. Replaces 0001..0008 from the
 -- iterative dev history (squashed into a single source of truth).
 
@@ -188,7 +188,7 @@ create table if not exists availability (
 );
 
 -- ============================================================================
--- HELPER FUNCTION: chat read (used by RLS — realtime evaluates better against
+-- HELPER FUNCTION: chat read (used by RLS - realtime evaluates better against
 -- a SECURITY DEFINER function than against cross-table EXISTS)
 -- ============================================================================
 create or replace function public.can_access_slot_chat(p_slot_id uuid)
@@ -301,7 +301,7 @@ create policy appearances_update_organizer on appearances
     exists (select 1 from slots s where s.id = slot_id and s.organizer_id = auth.uid())
   );
 
--- NO_SHOW_LOG / BANS — service role only writes, player reads own
+-- NO_SHOW_LOG / BANS - service role only writes, player reads own
 drop policy if exists no_show_log_read_self on no_show_log;
 create policy no_show_log_read_self on no_show_log
   for select using (auth.uid() = player_id);
@@ -345,7 +345,7 @@ create policy availability_write_self on availability
   for all using (auth.uid() = player_id) with check (auth.uid() = player_id);
 
 -- ============================================================================
--- TABLE GRANTS — RLS policies don't fire without these on a fresh project.
+-- TABLE GRANTS - RLS policies don't fire without these on a fresh project.
 -- ============================================================================
 grant usage on schema public to anon, authenticated;
 grant select on all tables in schema public to anon, authenticated;
@@ -380,7 +380,7 @@ exception when duplicate_object then null; end $$;
 -- BUSINESS FUNCTIONS
 -- ============================================================================
 
--- Apply to a slot — atomic with a row-level lock so concurrent applies
+-- Apply to a slot - atomic with a row-level lock so concurrent applies
 -- don't oversubscribe.
 create or replace function public.apply_to_slot(p_slot_id uuid)
 returns text
@@ -623,7 +623,7 @@ $$;
 grant execute on function public.kick_from_slot(uuid) to authenticated;
 
 -- ============================================================================
--- SEED — countries + major cities
+-- SEED - countries + major cities
 -- ============================================================================
 insert into countries (name, code) values
   ('Bosna i Hercegovina', 'BA'),

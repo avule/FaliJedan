@@ -49,8 +49,19 @@ export default async function MySlotsPage() {
 
   return (
     <main className="container py-6">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Moji slotovi</h1>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="font-display text-xs uppercase tracking-[0.3em] text-primary">
+            Organizator
+          </p>
+          <h1 className="mt-1 font-display text-4xl uppercase tracking-tight md:text-5xl">
+            Moji slotovi
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            <span className="tabular text-foreground">{slotsList.length}</span>{" "}
+            ukupno
+          </p>
+        </div>
         <Link href="/novi-slot" className={buttonVariants()}>
           + Novi slot
         </Link>
@@ -91,7 +102,8 @@ export default async function MySlotsPage() {
                           {slot.title}
                         </Link>
                         <p className="text-xs text-muted-foreground">
-                          {sportLabel(slot.sport)} · {levelLabel(slot.level)} ·{" "}
+                          {sportLabel(slot.sport, slot.custom_sport)} ·{" "}
+                          {levelLabel(slot.level)} ·{" "}
                           {formatScheduledAt(slot.scheduled_at)}
                         </p>
                         <p className="text-xs text-muted-foreground">

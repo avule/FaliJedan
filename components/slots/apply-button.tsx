@@ -69,7 +69,7 @@ export function ApplyButton({ slotId, myStatus, isOrganizer, isClosed }: Props) 
           );
         }}
       >
-        {myStatus === "waitlist" ? "Na čekanju — odjavi se" : "Odjavi se"}
+        {myStatus === "waitlist" ? "Na čekanju - odjavi se" : "Odjavi se"}
       </Button>
     );
   }
@@ -84,7 +84,7 @@ export function ApplyButton({ slotId, myStatus, isOrganizer, isClosed }: Props) 
             toast.error(res.error);
           } else if (res?.status === "waitlist") {
             toast.warning("Slot je pun", {
-              description: "Dodan si na waitlistu — javljamo ako se mjesto otvori.",
+              description: "Dodan si na waitlistu - javljamo ako se mjesto otvori.",
             });
           } else {
             toast.success("Prihvaćen si!", {
