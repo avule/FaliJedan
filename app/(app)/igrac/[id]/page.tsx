@@ -1,3 +1,7 @@
+// Javni profil drugog igraca (svako ga moze vidjeti). Prikazuje pouzdanost,
+// statistike i istoriju aktivnosti (pojave i kasne odjave) u jednom pregledu.
+
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -16,12 +20,42 @@ type ActivityItem =
   | { kind: "no_show"; at: string; slot: Slot }
   | { kind: "late_cancel"; at: string; slot: Slot };
 
-export default async function PlayerProfilePage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const supabase = createClient();
+// Dinamicki SEO: ime igraca kao naslov stranice, grad i pouzdanost u opisu.
+export async function generateMetadata(props: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await props.params;
+  const supabase = await createClient();
+  const { data: player } = await supabase
+    .from("players")
+    .select("name, reliability_score, city:cities(name)")
+    .eq("id", id)
+    .maybeSingle<{
+      name: string;
+      reliability_score: number;
+      city: { name: string } | null;
+    }>();
+
+  if (!player) return { title: "Igrač nije pronađen" };
+
+  const name = player.name || "Igrač";
+  const city = player.city?.name;
+  const desc = `${name}${city ? ` iz ${city}` : ""} na FaliJedan. Pouzdanost ${player.reliability_score}%. Pogledaj profil i istoriju nastupa.`;
+
+  return {
+    title: name,
+    description: desc,
+    openGraph: { title: `${name} · FaliJedan`, description: desc },
+  };
+}
+
+export default async function PlayerProfilePage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
+  const supabase = await createClient();
 
   const { data: player } = await supabase
     .from("players")
@@ -79,10 +113,11 @@ export default async function PlayerProfilePage({
   const totalApps = totalAppsRes.count ?? 0;
   const acceptRate =
     totalApps > 0 ? Math.round((acceptedCount / totalApps) * 100) : 0;
+  const now = Date.now();
   const isBanned =
-    !!player.ban_until && new Date(player.ban_until).getTime() > Date.now();
+    !!player.ban_until && new Date(player.ban_until).getTime() > now;
 
-  // Merge appearances + late_cancels into a single activity feed
+  // Spoji pojave i kasne odjave u jedan hronoloski pregled aktivnosti.
   const activity: ActivityItem[] = [
     ...(appearancesRes.data ?? [])
       .filter((a): a is Appearance & { slot: Slot } => !!a.slot)
@@ -122,7 +157,6 @@ export default async function PlayerProfilePage({
             <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
               {player.city?.name && player.country?.name ? (
                 <>
-                  <span aria-hidden>📍</span>
                   {player.city.name}, {player.country.name}
                 </>
               ) : (
@@ -132,7 +166,7 @@ export default async function PlayerProfilePage({
                 <>
                   <span className="text-muted-foreground/50">·</span>
                   <span className="text-foreground">
-                    {levelLabel(player.level)} level
+                    {levelLabel(player.level)} nivo
                   </span>
                 </>
               )}
@@ -160,7 +194,7 @@ export default async function PlayerProfilePage({
               label="Pouzdanost"
               sublabel={
                 player.no_show_count_30d > 0
-                  ? `${player.no_show_count_30d}× ne-pojav. (30d)`
+                  ? `${player.no_show_count_30d} izostanaka (30d)`
                   : "Bez incidenata (30d)"
               }
             />
@@ -184,12 +218,12 @@ export default async function PlayerProfilePage({
               }
             />
             <StatCard
-              label="Ne-pojav. (30d)"
+              label="Izostanci (30d)"
               value={<CountUp value={player.no_show_count_30d} />}
               danger={player.no_show_count_30d >= 2}
             />
             <StatCard
-              label="Reliability"
+              label="Pouzdanost"
               value={
                 <>
                   <CountUp value={player.reliability_score} />%

@@ -1,5 +1,8 @@
 "use client";
 
+// Upload avatara direktno u Supabase storage.
+// Poslije uspjesnog uploada cuva javni URL u profilu igraca.
+
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -26,7 +29,7 @@ export function AvatarUpload({ userId, name, initialUrl }: Props) {
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ""; // allow reselect of same file
+    e.target.value = ""; // da se ista slika moze ponovo izabrati
     if (!file) return;
 
     if (!ACCEPT.includes(file.type)) {
@@ -40,6 +43,7 @@ export function AvatarUpload({ userId, name, initialUrl }: Props) {
 
     start(async () => {
       const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+      // Putanja sadrzi userId da svaki igrac ima svoj folder.
       const path = `${userId}/${Date.now()}.${ext}`;
 
       const { error: upErr } = await supabase.storage
@@ -47,7 +51,7 @@ export function AvatarUpload({ userId, name, initialUrl }: Props) {
         .upload(path, file, { upsert: true, contentType: file.type });
 
       if (upErr) {
-        toast.error(`Upload greška: ${upErr.message}`);
+        toast.error("Slika nije uploadovana. Probaj drugu sliku ili pokušaj ponovo.");
         return;
       }
 
@@ -62,7 +66,7 @@ export function AvatarUpload({ userId, name, initialUrl }: Props) {
       }
 
       setUrl(publicUrl);
-      toast.success("Avatar ažuriran");
+      toast.success("Avatar je osvježen");
       router.refresh();
     });
   }
@@ -75,7 +79,7 @@ export function AvatarUpload({ userId, name, initialUrl }: Props) {
         return;
       }
       setUrl(null);
-      toast.success("Avatar uklonjen");
+      toast.success("Avatar je uklonjen");
       router.refresh();
     });
   }

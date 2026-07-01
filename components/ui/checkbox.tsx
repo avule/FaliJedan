@@ -33,7 +33,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, Props>(
         <span
           aria-hidden
           className={cn(
-            "absolute inset-0 rounded-md border border-border bg-card transition-all duration-200",
+            "pointer-events-none absolute inset-0 rounded-md border border-border bg-card transition-all duration-200",
             "peer-hover:border-primary/60",
             "peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background",
             "peer-checked:border-primary peer-checked:bg-gradient-primary peer-checked:shadow-glow",

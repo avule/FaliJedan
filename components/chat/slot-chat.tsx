@@ -1,5 +1,8 @@
 "use client";
 
+// Chat za jedan slot, vide ga samo organizator i prihvaceni igraci. Pocetne
+// poruke stignu sa servera, a nove putuju uzivo preko Supabase broadcast kanala.
+
 import { useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -15,19 +18,20 @@ type Props = {
   slotId: string;
   meId: string;
   initial: Message[];
-  participants: Record<string, string>; // player_id -> name
+  participants: Record<string, string>; // player_id na ime
 };
 
 export function SlotChat({ slotId, meId, initial, participants }: Props) {
   const [messages, setMessages] = useState<Message[]>(initial);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
-  const supabase = useRef(createClient()).current;
+  const [supabase] = useState(() => createClient());
   const channelRef = useRef<RealtimeChannel | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Broadcast channel - bypasses RLS, peer-to-peer between subscribed clients.
-  // RSC fetches initial messages on first load; live updates ride this channel.
+  // Broadcast kanal salje poruke direktno medju pretplacenim klijentima.
+  // Pocetne poruke povuce server na prvom ucitavanju, a uzivo azuriranja
+  // putuju ovim kanalom.
   useEffect(() => {
     const channel = supabase.channel(`slot-chat-${slotId}`, {
       config: { broadcast: { self: false } },
@@ -66,13 +70,13 @@ export function SlotChat({ slotId, meId, initial, participants }: Props) {
       .single();
 
     if (error) {
-      toast.error(error.message);
+      toast.error("Poruka nije poslana. Pokušaj ponovo za trenutak.");
       setSending(false);
       return;
     }
 
     if (data) {
-      // Local insert + broadcast to other subscribers.
+      // Odmah dodaj kod sebe, pa emituj ostalima na kanalu.
       setMessages((prev) =>
         prev.some((x) => x.id === data.id) ? prev : [...prev, data]
       );
@@ -100,8 +104,7 @@ export function SlotChat({ slotId, meId, initial, participants }: Props) {
       >
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center text-center text-sm text-muted-foreground">
-            <span className="text-3xl opacity-50">💬</span>
-            <p className="mt-2">Još nema poruka. Pozdravi ekipu 👋</p>
+            <p>Još nema poruka. Pozdravi ekipu.</p>
           </div>
         )}
         {messages.map((m, i) => {

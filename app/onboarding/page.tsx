@@ -1,9 +1,12 @@
+// Onboarding nakon registracije. Ako je korisnik vec popunio grad i sportove,
+// preusmjeri ga na feed. U suprotnom prikazi carobnjak u par koraka.
+
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingWizard } from "./wizard";
 
 export default async function OnboardingPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -21,7 +24,7 @@ export default async function OnboardingPage() {
         .maybeSingle(),
     ]);
 
-  // Already completed → straight to feed
+  // Vec popunjeno, pravo na feed.
   if (player?.city_id && player?.sports?.length) {
     redirect("/igraj");
   }

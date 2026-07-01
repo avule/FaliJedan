@@ -1,3 +1,5 @@
+// Tailwind tema i putanje fajlova koje skener treba da cita.
+
 import type { Config } from "tailwindcss";
 
 const config: Config = {
@@ -14,7 +16,7 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
         display: ["var(--font-display)", "Impact", "sans-serif"],
       },
@@ -54,8 +56,6 @@ const config: Config = {
         sport: {
           football:   "#22f56b",
           basketball: "#ff8a3c",
-          tennis:     "#fbe24a",
-          volleyball: "#3b82f6",
           padel:      "#ec4899",
         },
       },
@@ -112,6 +112,19 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0) rotate(0deg)" },
           "50%": { transform: "translateY(-12px) rotate(180deg)" },
         },
+        // Redizajn: ticker traka, lebdeca hero kartica, pulsiranje tacke
+        marquee: {
+          from: { transform: "translateX(0)" },
+          to: { transform: "translateX(-50%)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        glow: {
+          "0%, 100%": { opacity: "0.55" },
+          "50%": { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -121,6 +134,9 @@ const config: Config = {
         "scale-in": "scale-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both",
         "pulse-accent": "pulse-accent 1.6s ease-in-out infinite",
         "ball-bounce": "ball-bounce 1.6s cubic-bezier(0.5, 0, 0.5, 1) infinite",
+        marquee: "marquee 26s linear infinite",
+        float: "float 6s ease-in-out infinite",
+        glow: "glow 1.6s ease-in-out infinite",
       },
     },
   },

@@ -1,5 +1,5 @@
-// Supabase row shapes - keep aligned with /supabase/migrations.
-// Regenerate with `supabase gen types typescript` once CLI is wired up.
+// Oblici redova iz Supabase baze. Drzati uskladjeno sa /supabase/migrations.
+// Kad se CLI podesi, moze se regenerisati sa `supabase gen types typescript`.
 
 export type SportKey =
   | "football"

@@ -1,6 +1,6 @@
-// City centers (lat, lng) for the 23 seeded cities.
-// Used to position the map when a city filter is active or for the
-// "your city" default on first load.
+// Centri (lat, lng) za 23 grada koja su ubacena u bazu.
+// Sluze da se mapa pozicionira kad je filter grada aktivan, ili za
+// podrazumijevani "tvoj grad" pri prvom ucitavanju.
 
 export const CITY_CENTERS: Record<string, [number, number]> = {
   // BA
@@ -33,8 +33,8 @@ export const CITY_CENTERS: Record<string, [number, number]> = {
   "Tetovo": [42.0103, 20.9714],
 };
 
-// Geographic center of the Balkans - used as a true fallback when no
-// city is selected and user has none in profile.
+// Geografski centar Balkana. Krajnja rezerva kad nijedan grad nije izabran,
+// a korisnik ga nema ni u profilu.
 export const BALKAN_CENTER: [number, number] = [44.0, 19.5];
 export const BALKAN_ZOOM = 6;
 export const CITY_ZOOM = 13;

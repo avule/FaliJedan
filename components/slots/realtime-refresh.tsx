@@ -1,13 +1,12 @@
 "use client";
 
+// Isto kao realtime za jedan slot, ali za feed. Osluskuje promjene nad svim slotovima
+// i osvjezi listu da korisnik vidi nove termine bez rucnog osvjezavanja.
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-/**
- * Subscribes to slot changes and triggers router.refresh() on UPDATE/INSERT.
- * RSC re-renders, server fetches fresh data. Simple, no client-side state.
- */
 export function RealtimeRefresh() {
   const router = useRouter();
 
@@ -18,9 +17,19 @@ export function RealtimeRefresh() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "slots" },
-        () => router.refresh()
+        (payload) => {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[realtime:feed] event", payload.eventType);
+          }
+          router.refresh();
+        }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // U dev konzoli se vidi da li je pretplata prosla (SUBSCRIBED) ili ne.
+        if (process.env.NODE_ENV === "development") {
+          console.log("[realtime:feed]", status);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

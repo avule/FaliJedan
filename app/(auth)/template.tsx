@@ -1,3 +1,5 @@
+// Template za auth rute daje animaciju pri prelazu izmedju login i register.
+
 export default function AuthTemplate({
   children,
 }: {

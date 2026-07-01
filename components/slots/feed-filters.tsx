@@ -1,5 +1,9 @@
 "use client";
 
+// Filteri iznad feeda (grad, sport, nivo, vrijeme). Stanje se cuva u URL
+// kao query parametri, pa server komponenta feeda iz njih cita sta da prikaze.
+// Tako filteri prezive osvjezavanje i mogu se podijeliti linkom.
+
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback, useState } from "react";
 import { Select } from "@/components/ui/select";
@@ -46,7 +50,7 @@ export function FeedFilters({ cities, defaultCityId }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* TOP ROW: city + sport icons + advanced toggle */}
+      {/* Glavni red filtera */}
       <div className="flex flex-wrap items-center gap-2">
         <Select
           value={searchParams.get("city") ?? defaultCityId?.toString() ?? ""}
@@ -63,7 +67,7 @@ export function FeedFilters({ cities, defaultCityId }: Props) {
 
         <div className="h-6 w-px bg-border" />
 
-        {/* Sport icon-only pills */}
+        {/* Dugmad za sportove kao ikonice */}
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
@@ -132,7 +136,7 @@ export function FeedFilters({ cities, defaultCityId }: Props) {
         </div>
       </div>
 
-      {/* ADVANCED ROW (collapsible) */}
+      {/* Dodatni filteri koji se mogu sakriti */}
       {showAdvanced && (
         <div className="flex flex-wrap gap-x-6 gap-y-2 rounded-md border border-border bg-card/40 p-3 animate-fade-in">
           <div className="flex flex-wrap items-center gap-1.5">

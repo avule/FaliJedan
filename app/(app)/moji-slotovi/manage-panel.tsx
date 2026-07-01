@@ -1,5 +1,9 @@
 "use client";
 
+// Panel za prosli slot kojim organizator potvrdjuje ko se pojavio. Svakog
+// prihvacenog igraca cekira (podrazumijevano "dosao"), pa salje spisak serveru.
+// Na osnovu toga se racuna pouzdanost i izricu eventualni banovi.
+
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -22,6 +26,7 @@ type Props = {
   accepted: AppWithPlayer[];
   waitlist: AppWithPlayer[];
   canConfirm: boolean;
+  isPast: boolean;
   isCancelled: boolean;
   isDone: boolean;
 };
@@ -31,6 +36,7 @@ export function ManageSlotPanel({
   accepted,
   waitlist,
   canConfirm,
+  isPast,
   isCancelled,
   isDone,
 }: Props) {
@@ -38,7 +44,7 @@ export function ManageSlotPanel({
   const [pending, start] = useTransition();
   const [showedUp, setShowedUp] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
-    for (const a of accepted) init[a.player_id] = true; // default: yes
+    for (const a of accepted) init[a.player_id] = true; // podrazumijevano: dosao
     return init;
   });
 
@@ -49,26 +55,26 @@ export function ManageSlotPanel({
   }
 
   function kick(appId: string) {
-    toast("Izbaciti igrača sa slota?", {
+    toast("Ukloniti igrača?", {
       action: {
-        label: "Izbaci",
+        label: "Ukloni igrača",
         onClick: () =>
           start(async () => {
             const res = await kickFromSlotAction(appId, slotId);
             if (res?.error) toast.error(res.error);
-            else toast.success("Igrač uklonjen");
+            else toast.success("Igrač je uklonjen");
             router.refresh();
           }),
       },
-      cancel: { label: "Otkaži", onClick: () => {} },
+      cancel: { label: "Odustani", onClick: () => {} },
     });
   }
 
   function cancel() {
     toast("Otkazati slot?", {
-      description: "Igrači se više neće moći prijavljivati.",
+      description: "Prijave se zatvaraju, a prihvaćeni igrači dobijaju obavještenje.",
       action: {
-        label: "Da, otkaži",
+        label: "Otkaži slot",
         onClick: () =>
           start(async () => {
             const res = await cancelSlotAction(slotId);
@@ -77,15 +83,15 @@ export function ManageSlotPanel({
             router.refresh();
           }),
       },
-      cancel: { label: "Nazad", onClick: () => {} },
+      cancel: { label: "Odustani", onClick: () => {} },
     });
   }
 
   function confirm_() {
-    toast("Potvrditi pojave?", {
-      description: "Finalizuje slot i okida pouzdanost/ban logiku.",
+    toast("Potvrditi dolaske?", {
+      description: "Zaključava termin i ažurira pouzdanost igrača.",
       action: {
-        label: "Potvrdi",
+        label: "Potvrdi dolaske",
         onClick: () =>
           start(async () => {
             const entries = accepted.map((a) => ({
@@ -94,18 +100,35 @@ export function ManageSlotPanel({
             }));
             const res = await confirmAppearancesAction(slotId, entries);
             if (res?.error) toast.error(res.error);
-            else toast.success("Pojave potvrđene");
+            else toast.success("Dolasci potvrđeni");
             router.refresh();
           }),
       },
-      cancel: { label: "Otkaži", onClick: () => {} },
+      cancel: { label: "Odustani", onClick: () => {} },
+    });
+  }
+
+  function closeEmpty() {
+    toast("Završiti slot bez prijava?", {
+      description: "Niko nije bio prijavljen - slot ide u istoriju.",
+      action: {
+        label: "Završi slot",
+        onClick: () =>
+          start(async () => {
+            const res = await confirmAppearancesAction(slotId, []);
+            if (res?.error) toast.error(res.error);
+            else toast.success("Slot završen");
+            router.refresh();
+          }),
+      },
+      cancel: { label: "Odustani", onClick: () => {} },
     });
   }
 
   if (isCancelled) {
     return (
       <p className="mt-4 text-sm text-muted-foreground">
-        Slot otkazan - nema više akcija.
+        Slot je otkazan - nema više akcija.
       </p>
     );
   }
@@ -145,11 +168,11 @@ export function ManageSlotPanel({
                         reliabilityBadge(a.player.reliability_score)}
                       {a.player && a.player.no_show_count_30d >= 2 && (
                         <Badge variant="warning">
-                          {a.player.no_show_count_30d}× ne-pojav. (30d)
+                          {a.player.no_show_count_30d} izostanaka (30d)
                         </Badge>
                       )}
                     </div>
-                    {!isDone && (
+                    {!isDone && !canConfirm && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -168,7 +191,7 @@ export function ManageSlotPanel({
           {waitlist.length > 0 && (
             <div>
               <h3 className="mb-2 text-sm font-semibold">
-                Na čekanju ({waitlist.length})
+                Lista čekanja ({waitlist.length})
               </h3>
               <ul className="space-y-2">
                 {waitlist.map((a) => (
@@ -181,7 +204,7 @@ export function ManageSlotPanel({
                       {a.player &&
                         reliabilityBadge(a.player.reliability_score)}
                     </div>
-                    {!isDone && (
+                    {!isDone && !canConfirm && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -200,12 +223,17 @@ export function ManageSlotPanel({
       )}
 
       <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-        {canConfirm && (
-          <Button onClick={confirm_} disabled={pending || accepted.length === 0}>
-            Potvrdi pojave
+        {canConfirm && accepted.length > 0 && (
+          <Button onClick={confirm_} disabled={pending}>
+            Potvrdi dolaske
           </Button>
         )}
-        {!isDone && (
+        {canConfirm && accepted.length === 0 && (
+          <Button onClick={closeEmpty} disabled={pending}>
+            Označi kao završen
+          </Button>
+        )}
+        {!isDone && !isPast && (
           <Button variant="outline" onClick={cancel} disabled={pending}>
             Otkaži slot
           </Button>

@@ -1,14 +1,17 @@
 "use server";
 
+// Zavrsetak onboardinga: prvi put upisuje grad, sportove i nivo igraca,
+// pa ga salje na feed. Bez ovih podataka proxy stalno vraca na onboarding.
+
 import { z } from "zod";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 const OnboardingSchema = z.object({
-  country_id: z.coerce.number().int().positive(),
-  city_id: z.coerce.number().int().positive(),
-  sports: z.array(z.string()).min(1, "Odaberi bar jedan sport"),
+  country_id: z.coerce.number().int().positive("Odaberi državu da znamo gdje igraš."),
+  city_id: z.coerce.number().int().positive("Odaberi grad da ti pokažemo prave termine."),
+  sports: z.array(z.string()).min(1, "Odaberi bar jedan sport koji igraš."),
   level: z.enum(["casual", "mid", "competitive"]),
 });
 
@@ -18,12 +21,12 @@ export async function completeOnboardingAction(
   _prev: OnboardingState,
   formData: FormData
 ): Promise<OnboardingState> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return { error: "Nisi prijavljen" };
+  if (!user) return { error: "Prijavi se da završimo tvoj profil." };
 
   const sports = formData.getAll("sports").map(String);
 
@@ -35,7 +38,7 @@ export async function completeOnboardingAction(
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Neispravni podaci" };
+    return { error: parsed.error.errors[0]?.message ?? "Još nešto fali u profilu. Provjeri korake pa pokušaj ponovo." };
   }
 
   const { error } = await supabase
@@ -48,7 +51,7 @@ export async function completeOnboardingAction(
     })
     .eq("id", user.id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: "Nismo uspjeli završiti profil. Pokušaj ponovo za trenutak." };
 
   revalidatePath("/", "layout");
   redirect("/igraj");

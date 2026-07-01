@@ -1,5 +1,5 @@
-// Template re-mounts on every route change inside the (app) group.
-// We use a CSS fade-in animation - no Framer Motion needed.
+// Template se ponovo montira na svaku promjenu rute u (app) grupi.
+// Koristimo cistu CSS animaciju, Framer Motion nije potreban.
 export default function AppTemplate({
   children,
 }: {

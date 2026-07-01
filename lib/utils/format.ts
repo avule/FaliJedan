@@ -1,3 +1,6 @@
+// Pomocne funkcije za prikaz datuma na srpskom: "Danas u 18:00", "Sutra u..."
+// i relativno vrijeme ("prije 2 sata"). Sve ide preko date fns.
+
 import { format, formatDistanceToNow, isToday, isTomorrow } from "date-fns";
 
 export function formatScheduledAt(iso: string): string {

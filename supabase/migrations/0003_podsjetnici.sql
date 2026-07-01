@@ -1,4 +1,4 @@
--- Prevent duplicate 24h reminder emails when cron runs twice in a window.
+-- da cron ne posalje isti 24h podsjetnik dva puta
 alter table applications
   add column if not exists reminder_sent_at timestamptz;
 

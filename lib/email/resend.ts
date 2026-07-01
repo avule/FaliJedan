@@ -1,8 +1,12 @@
+// Nizak sloj za slanje mejlova preko Resend servisa. Ovdje su podesavanja
+// (klijent, adresa posiljaoca, URL sajta) i jedna sendEmail funkcija.
+
 import { Resend } from "resend";
 
 const apiKey = process.env.RESEND_API_KEY;
 
-// Singleton - Resend client is fine to reuse across requests.
+// Jedan klijent za sve zahtjeve. Ako kljuc fali (lokalni dev), ostaje null
+// pa sendEmail samo preskoci slanje umjesto da puca.
 export const resend = apiKey ? new Resend(apiKey) : null;
 
 export const EMAIL_FROM =
@@ -12,8 +16,8 @@ export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 /**
- * Fire-and-forget email sender. Never throws - email failures
- * must not break the user flow. Logs to console for ops to see.
+ * Salje mejl i nikad ne baca gresku. Mejl je sporedna stvar, ne smije
+ * srusiti glavnu radnju korisnika. Sve sto krene naopako ide u konzolu.
  */
 export async function sendEmail(args: {
   to: string;
@@ -21,7 +25,8 @@ export async function sendEmail(args: {
   html: string;
 }) {
   if (!resend) {
-    console.warn("[email] RESEND_API_KEY not set - skipping email", args.subject);
+    // Nema API kljuca, npr. lokalni razvoj. Tiho preskoci.
+    console.warn("[email] RESEND_API_KEY nije postavljen, preskacem", args.subject);
     return;
   }
   try {

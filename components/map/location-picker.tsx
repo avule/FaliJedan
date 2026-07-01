@@ -1,5 +1,8 @@
 "use client";
 
+// Interaktivna mapa za biranje lokacije novog slota.
+// Klik na mapu vraca koordinate u formu.
+
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -12,6 +15,7 @@ const pinIcon = L.divIcon({
 });
 
 function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  // React Leaflet hook hvata klik i salje lat lng nazad roditelju.
   useMapEvents({
     click: (e) => onPick(e.latlng.lat, e.latlng.lng),
   });

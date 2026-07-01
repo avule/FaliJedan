@@ -1,5 +1,8 @@
 "use client";
 
+// Birac datuma i vremena (kalendar plus sati/minuti) za zakazivanje termina.
+// Vraca jedan Date objekat koji forma posalje serveru kao ISO string.
+
 import * as React from "react";
 import { format } from "date-fns";
 import { srLatn } from "date-fns/locale";

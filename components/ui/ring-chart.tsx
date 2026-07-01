@@ -12,7 +12,7 @@ type Props = {
 
 export function RingChart({
   value,
-  size = 160,
+  size = 176,
   strokeWidth = 12,
   label,
   sublabel,
@@ -24,11 +24,14 @@ export function RingChart({
     return () => clearTimeout(t);
   }, [value]);
 
-  const r = (size - strokeWidth) / 2;
+  // Uvuci prsten za sirinu sjaja da sjena ne udari u ivicu SVG kutije
+  // (inace se glow odsijeca u kvadrat).
+  const glowPad = 16;
+  const r = (size - strokeWidth) / 2 - glowPad;
   const c = 2 * Math.PI * r;
   const offset = c - (animated / 100) * c;
 
-  // Color shifts with score
+  // Boja prati ocjenu: zeleno visoko, narandzasto srednje, crveno nisko.
   const color =
     value >= 85
       ? "hsl(var(--primary))"

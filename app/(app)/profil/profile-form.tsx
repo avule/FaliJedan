@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+// Forma za uredjivanje profila igraca.
+// Drzava filtrira gradove, a sportovi se salju kao vise hidden polja.
+
+import { useActionState, useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +42,7 @@ export function ProfileForm({ initial, countries, cities }: Props) {
   const [cityId, setCityId] = useState<number | null>(initial.city_id);
   const [sports, setSports] = useState<string[]>(initial.sports);
   const [level, setLevel] = useState<Level>(initial.level);
-  const [state, formAction] = useFormState<ProfileState, FormData>(
+  const [state, formAction] = useActionState<ProfileState, FormData>(
     updateProfileAction,
     null
   );
@@ -57,7 +60,7 @@ export function ProfileForm({ initial, countries, cities }: Props) {
   return (
     <Card>
       <CardContent className="pt-6">
-        <form action={formAction} className="space-y-5">
+        <form action={formAction} className="space-y-5" noValidate>
           <div className="space-y-2">
             <Label htmlFor="name">Ime</Label>
             <Input
@@ -165,7 +168,7 @@ export function ProfileForm({ initial, countries, cities }: Props) {
           {state?.error && (
             <p className="text-sm text-destructive">{state.error}</p>
           )}
-          {state?.ok && <p className="text-sm text-primary">Sačuvano ✓</p>}
+          {state?.ok && <p className="text-sm text-primary">Sačuvano</p>}
 
           <div className="flex justify-end pt-2">
             <SubmitButton />

@@ -1,10 +1,14 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+// Klijentska forma za prijavu.
+// Server akcija provjerava email, lozinku i eventualno nepotvrdjen nalog.
+
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
 import { loginAction, type AuthState } from "@/lib/actions/auth";
 
 function SubmitButton() {
@@ -16,43 +20,60 @@ function SubmitButton() {
   );
 }
 
-export function LoginForm({ next }: { next?: string }) {
-  const [state, formAction] = useFormState<AuthState, FormData>(
+export function LoginForm({
+  next,
+  initialError,
+}: {
+  next?: string;
+  initialError?: string;
+}) {
+  const [email, setEmail] = useState("");
+  const [state, formAction] = useActionState<AuthState, FormData>(
     loginAction,
     null
   );
 
+  const error = state?.error ?? initialError;
+
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <form action={formAction} className="space-y-4">
-          <input type="hidden" name="next" value={next ?? ""} />
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Lozinka</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-          </div>
-          {state?.error && (
-            <p className="text-sm text-destructive">{state.error}</p>
+    <form action={formAction} className="space-y-4" noValidate>
+      <input type="hidden" name="next" value={next ?? ""} />
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Lozinka</Label>
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
+      </div>
+      {error && (
+        <div className="space-y-2 text-sm">
+          <p className="text-destructive">{error}</p>
+          {state?.needsConfirm && (
+            <Link
+              href={`/register/provjeri-email${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+              className="inline-block text-primary hover:underline"
+            >
+              Pošalji link za potvrdu ponovo →
+            </Link>
           )}
-          <SubmitButton />
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      )}
+      <SubmitButton />
+    </form>
   );
 }

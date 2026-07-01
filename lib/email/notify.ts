@@ -1,11 +1,11 @@
 "use server";
 
 /**
- * High-level "send X notification" helpers.
- * Fetch the data they need from Supabase using the service client,
- * format with templates, fire-and-forget via Resend.
+ * Pomocne funkcije tipa "posalji obavjestenje X".
+ * Svaka sama povuce sto joj treba iz baze (service klijent), sklopi
+ * template i posalje preko Resend bez cekanja.
  *
- * All functions swallow errors - email is never allowed to break user flow.
+ * Sve gutaju greske. Mejl nikad ne smije srusiti korisnikovu radnju.
  */
 
 import { createServiceClient } from "@/lib/supabase/server";
@@ -16,6 +16,7 @@ import {
   banEmail,
   kickedEmail,
   noShowWarningEmail,
+  slotCancelledEmail,
   slotFullEmail,
 } from "./templates";
 
@@ -27,7 +28,7 @@ async function getEmailFor(playerId: string): Promise<string | null> {
     .eq("id", playerId)
     .maybeSingle();
   if (!data) return null;
-  // auth.users has the email; admin schema access via service role.
+  // Email zivi u auth.users, a tu se dolazi samo service role kljucem.
   const { data: u } = await admin.auth.admin.getUserById(playerId);
   return u?.user?.email ?? null;
 }
@@ -72,7 +73,7 @@ export async function notifyApplicationOutcome(args: {
       await sendEmail({ to: email, ...m });
     }
 
-    // If this apply just made the slot full, ping the organizer too.
+    // Ako je ova prijava upravo popunila slot, javi i organizatoru.
     if (
       args.status === "accepted" &&
       slot.filled_spots >= slot.total_spots
@@ -97,6 +98,38 @@ export async function notifyApplicationOutcome(args: {
   }
 }
 
+/**
+ * Igrac sa liste cekanja je promovisan u prihvacenog (neko ispred se odjavio).
+ * Salje samo "uletio si" mejl. Bez javljanja da je slot pun, jer broj
+ * popunjenih mjesta se nije promijenio (jedan izasao, jedan usao).
+ */
+export async function notifyWaitlistPromoted(playerId: string, slotId: string) {
+  try {
+    const admin = createServiceClient();
+    const [{ data: slot }, { data: player }, email] = await Promise.all([
+      admin
+        .from("slots")
+        .select("id, title, scheduled_at, location_name")
+        .eq("id", slotId)
+        .maybeSingle(),
+      admin.from("players").select("name").eq("id", playerId).maybeSingle(),
+      getEmailFor(playerId),
+    ]);
+    if (!slot || !player || !email) return;
+
+    const m = applicationAcceptedEmail({
+      playerName: player.name || "Igrač",
+      slotTitle: slot.title,
+      scheduledAt: slot.scheduled_at,
+      locationName: slot.location_name,
+      slotId: slot.id,
+    });
+    await sendEmail({ to: email, ...m });
+  } catch (e) {
+    console.error("[notify.promoted]", e);
+  }
+}
+
 export async function notifyKicked(playerId: string, slotId: string) {
   try {
     const admin = createServiceClient();
@@ -113,6 +146,50 @@ export async function notifyKicked(playerId: string, slotId: string) {
     await sendEmail({ to: email, ...m });
   } catch (e) {
     console.error("[notify.kicked]", e);
+  }
+}
+
+/**
+ * Organizator je otkazao slot. Javi svakom prihvacenom igracu da niko ne
+ * dodje na utakmicu koje nema. Zovi tek POSLE potvrde da je otkaz upisan.
+ */
+export async function notifySlotCancelled(slotId: string) {
+  try {
+    const admin = createServiceClient();
+    const [{ data: slot }, { data: apps }] = await Promise.all([
+      admin
+        .from("slots")
+        .select("title, scheduled_at")
+        .eq("id", slotId)
+        .maybeSingle(),
+      admin
+        .from("applications")
+        .select("player_id")
+        .eq("slot_id", slotId)
+        .eq("status", "accepted"),
+    ]);
+    if (!slot || !apps || apps.length === 0) return;
+
+    for (const a of apps) {
+      const [{ data: player }, email] = await Promise.all([
+        admin
+          .from("players")
+          .select("name")
+          .eq("id", a.player_id)
+          .maybeSingle(),
+        getEmailFor(a.player_id),
+      ]);
+      if (!email) continue;
+
+      const m = slotCancelledEmail({
+        playerName: player?.name || "Igrač",
+        slotTitle: slot.title,
+        scheduledAt: slot.scheduled_at,
+      });
+      await sendEmail({ to: email, ...m });
+    }
+  } catch (e) {
+    console.error("[notify.cancelled]", e);
   }
 }
 

@@ -1,7 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+// Carobnjak za onboarding u par koraka: izbor drzave i grada, sportova i nivoa.
+// Na kraju poziva server akciju koja te podatke upise na profil igraca.
+
+import { useActionState, useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { AvatarUpload } from "@/components/profile/avatar-upload";
@@ -37,7 +40,7 @@ export function OnboardingWizard({ countries, cities, userId, userName }: Props)
   const [cityId, setCityId] = useState<number | null>(null);
   const [sports, setSports] = useState<SportKey[]>([]);
   const [level, setLevel] = useState<Level>("casual");
-  const [state, formAction] = useFormState<OnboardingState, FormData>(
+  const [state, formAction] = useActionState<OnboardingState, FormData>(
     completeOnboardingAction,
     null
   );
@@ -213,7 +216,7 @@ export function OnboardingWizard({ countries, cities, userId, userName }: Props)
         )}
 
         {step === 4 && (
-          <form action={formAction}>
+          <form action={formAction} noValidate>
             <input type="hidden" name="country_id" value={countryId ?? ""} />
             <input type="hidden" name="city_id" value={cityId ?? ""} />
             {sports.map((s) => (

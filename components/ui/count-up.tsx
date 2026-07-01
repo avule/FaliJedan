@@ -21,7 +21,7 @@ export function CountUp({
     let raf = 0;
     function tick(now: number) {
       const t = Math.min(1, (now - start) / duration);
-      // ease-out cubic
+      // Kubna kriva animacije, brzo krene pa uspori pred kraj
       const e = 1 - Math.pow(1 - t, 3);
       setShown(Math.round(from + (to - from) * e));
       if (t < 1) raf = requestAnimationFrame(tick);

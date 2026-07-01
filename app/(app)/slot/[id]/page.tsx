@@ -1,3 +1,8 @@
+// Detalj jednog slota, srce aplikacije. Server komponenta koja povuce slot,
+// organizatora, prijave i poruke, pa kroz tabove prikaze detalje, igrace,
+// (organizatoru) prijave i chat. Sta korisnik vidi i moze zavisi od uloge:
+// organizator, prihvacen igrac ili posjetilac.
+
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -7,6 +12,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Tabs } from "@/components/ui/tabs";
 import { ApplyButton } from "@/components/slots/apply-button";
 import { SlotOrganizerActions } from "@/components/slots/slot-organizer-actions";
+import { ApplicationActions } from "@/components/slots/application-actions";
 import { SlotRealtime } from "@/components/slots/slot-realtime";
 import { SlotChat } from "@/components/chat/slot-chat";
 import { sportEmoji, sportLabel, levelLabel } from "@/lib/sports";
@@ -23,43 +29,53 @@ type ApplicationWithPlayer = Application & {
   player: Pick<Player, "id" | "name" | "reliability_score" | "avatar_url"> | null;
 };
 
+// Boja sjaja u hero dijelu po sportu. Za "other" nema unosa, pa cn() samo
+// preskoci undefined i sjaj se ne prikaze.
 const SPORT_GLOW: Record<string, string> = {
   football:   "from-sport-football/20",
   basketball: "from-sport-basketball/20",
-  tennis:     "from-sport-tennis/20",
-  volleyball: "from-sport-volleyball/20",
   padel:      "from-sport-padel/20",
 };
 
 type TabKey = "detalji" | "igraci" | "prijave" | "chat";
 
-export default async function SlotDetailPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams: { tab?: TabKey };
-}) {
-  const supabase = createClient();
+export default async function SlotDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams: Promise<{ tab?: TabKey }>;
+  }
+) {
+  // Next 16: params i searchParams su Promise, pa se cekaju.
+  const searchParams = await props.searchParams;
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: slot } = await supabase
+  // Slot je osnova cijele stranice. Razdvajamo dva slucaja: ako je upit pukao
+  // (Supabase blip, istekao token...) bacamo gresku pa Next da 500 koji se moze
+  // osvjeziti - inace bi se trenutni promasaj zakesirao kao trajni 404.
+  // notFound() ostaje samo za red kojeg stvarno nema.
+  const { data: slot, error: slotErr } = await supabase
     .from("slots")
     .select("*")
     .eq("id", params.id)
     .maybeSingle<Slot>();
 
+  if (slotErr) throw slotErr;
   if (!slot) notFound();
 
+  // Organizator za prikaz imena i link na njegov profil.
   const { data: organizer } = await supabase
     .from("players")
     .select("id, name, reliability_score, avatar_url")
     .eq("id", slot.organizer_id)
     .maybeSingle();
 
+  // Sve prijave + osnovni podaci igraca jednim upitom (join na players),
+  // da ne radimo poseban upit za svakog igraca.
   const { data: applications } = await supabase
     .from("applications")
     .select(
@@ -69,20 +85,25 @@ export default async function SlotDetailPage({
     .order("applied_at", { ascending: true })
     .returns<ApplicationWithPlayer[]>();
 
+  // Ko je trenutni korisnik u odnosu na ovaj slot. Od ovih zastavica zavisi
+  // sta se prikazuje: koja dugmad, koji tabovi, da li chat.
   const apps = applications ?? [];
   const myApp = apps.find((a) => a.player_id === user.id) ?? null;
   const isOrganizer = slot.organizer_id === user.id;
   const isAccepted = myApp?.status === "accepted";
-  const canSeeChat = isOrganizer || isAccepted;
+  const canSeeChat = isOrganizer || isAccepted; // chat vide samo ucesnici
   const isClosed = slot.status === "cancelled" || slot.status === "done";
 
+  // Podjela prijava i racun slobodnih mjesta, za badge i meter u herou.
   const accepted = apps.filter((a) => a.status === "accepted");
   const waitlist = apps.filter((a) => a.status === "waitlist");
   const remaining = slot.total_spots - slot.filled_spots;
   const isFull = remaining <= 0 || slot.status === "full";
-  const isUrgent = !isFull && remaining === 1;
+  const isUrgent = !isFull && remaining === 1; // fali jos samo jedan
   const fillPct = Math.min(100, (slot.filled_spots / slot.total_spots) * 100);
 
+  // Poruke povlacimo samo ako korisnik smije da vidi chat, da ne trosimo
+  // upit bez potrebe.
   let chatMessages: SlotChatMessage[] = [];
   if (canSeeChat) {
     const { data } = await supabase
@@ -94,6 +115,7 @@ export default async function SlotDetailPage({
     chatMessages = data ?? [];
   }
 
+  // Mapa id -> ime, da chat zna ciju poruku da prikaze uz koje ime.
   const participants: Record<string, string> = {};
   if (organizer) participants[organizer.id] = organizer.name || "Organizator";
   for (const a of apps) {
@@ -102,7 +124,7 @@ export default async function SlotDetailPage({
 
   const activeTab: TabKey = searchParams.tab ?? "detalji";
 
-  // Build tabs list (Prijave only for organizer)
+  // Sastavi listu tabova (Prijave vidi samo organizator).
   const tabs = [
     { key: "detalji", label: "Detalji" },
     {
@@ -162,6 +184,8 @@ export default async function SlotDetailPage({
             </div>
 
             <div className="flex flex-col items-end gap-2">
+              {/* Status badge: otkazan/zavrsen/pun imaju prednost, pa tek onda
+                  koliko jos fali (urgent ako fali samo jedan). */}
               {slot.status === "cancelled" ? (
                 <Badge variant="destructive">Otkazan</Badge>
               ) : slot.status === "done" ? (
@@ -177,11 +201,25 @@ export default async function SlotDetailPage({
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Stat label="Lokacija" value={slot.location_name} icon="📍" />
+            <Stat
+              label="Lokacija"
+              value={
+                // Vodi na Google Maps sa tacnim koordinatama pina koje je
+                // organizator postavio pri kreiranju slota.
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${slot.lat},${slot.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  {slot.location_name}
+                  <span aria-hidden className="text-xs">↗</span>
+                </a>
+              }
+            />
             <Stat
               label="Vrijeme"
               value={formatScheduledAt(slot.scheduled_at)}
-              icon="🕒"
             />
             <Stat
               label="Slobodno"
@@ -193,7 +231,6 @@ export default async function SlotDetailPage({
                   </span>
                 </span>
               }
-              icon="👥"
             />
             <Stat
               label="Organizator"
@@ -209,7 +246,6 @@ export default async function SlotDetailPage({
                   "-"
                 )
               }
-              icon="🧑"
             />
           </div>
 
@@ -223,6 +259,8 @@ export default async function SlotDetailPage({
           </div>
 
           <div className="mt-6">
+            {/* Organizator vidi svoje akcije (izmijeni/otkazi), svi ostali
+                dugme za prijavu ili odjavu. */}
             {isOrganizer ? (
               <SlotOrganizerActions slotId={slot.id} isClosed={isClosed} />
             ) : (
@@ -240,7 +278,9 @@ export default async function SlotDetailPage({
       {/* TABS */}
       <Tabs tabs={tabs} basePath={`/slot/${slot.id}`} className="mb-6" />
 
-      {/* TAB CONTENT */}
+      {/* TAB CONTENT - prikazuje se samo aktivni tab. Prijave i chat su i ovdje
+          jos jednom zasticeni ulogom (isOrganizer / canSeeChat), ne oslanjamo se
+          samo na to sto je tab skriven. */}
       {activeTab === "detalji" && <DetailsTab description={slot.description} />}
 
       {activeTab === "igraci" && (
@@ -248,7 +288,7 @@ export default async function SlotDetailPage({
       )}
 
       {activeTab === "prijave" && isOrganizer && (
-        <ApplicationsTab apps={apps} />
+        <ApplicationsTab apps={apps} slotId={slot.id} isClosed={isClosed} />
       )}
 
       {activeTab === "chat" && canSeeChat && (
@@ -263,21 +303,19 @@ export default async function SlotDetailPage({
   );
 }
 
-/* ----------- helpers ----------- */
+/* Pomocne komponente */
 
 function Stat({
   label,
   value,
-  icon,
 }: {
   label: string;
   value: React.ReactNode;
-  icon: string;
 }) {
   return (
     <div>
-      <p className="flex items-center gap-1 text-xs uppercase tracking-wider text-muted-foreground">
-        <span aria-hidden>{icon}</span> {label}
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+        {label}
       </p>
       <div className="mt-1 text-sm font-medium">{value}</div>
     </div>
@@ -305,6 +343,7 @@ function DetailsTab({ description }: { description: string | null }) {
   );
 }
 
+// Tab "Igraci": prihvaceni i lista cekanja. Samo prikaz, bez akcija.
 function PlayersTab({
   accepted,
   waitlist,
@@ -337,12 +376,12 @@ function PlayersTab({
       <Card>
         <CardContent className="pt-6">
           <h2 className="font-display text-lg uppercase tracking-wider">
-            Na čekanju{" "}
+            Lista čekanja{" "}
             <span className="text-muted-foreground">({waitlist.length})</span>
           </h2>
           {waitlist.length === 0 ? (
             <p className="mt-3 text-sm text-muted-foreground">
-              Nema igrača na waitlisti.
+              Nema igrača na listi čekanja.
             </p>
           ) : (
             <ul className="mt-4 grid gap-2">
@@ -357,7 +396,17 @@ function PlayersTab({
   );
 }
 
-function ApplicationsTab({ apps }: { apps: ApplicationWithPlayer[] }) {
+// Tab "Prijave" (vidi samo organizator): sve prijave sa akcijama za upravljanje
+// (odobri/odbij za pending, izbaci za ostale). Akcije nestaju ako je slot zatvoren.
+function ApplicationsTab({
+  apps,
+  slotId,
+  isClosed,
+}: {
+  apps: ApplicationWithPlayer[];
+  slotId: string;
+  isClosed: boolean;
+}) {
   if (apps.length === 0) {
     return (
       <Card>
@@ -406,7 +455,16 @@ function ApplicationsTab({ apps }: { apps: ApplicationWithPlayer[] }) {
                   {a.player?.reliability_score ?? 100}%
                 </span>
               </Link>
-              <StatusPill status={a.status} />
+              <div className="flex shrink-0 items-center gap-2">
+                <StatusPill status={a.status} />
+                {!isClosed && (
+                  <ApplicationActions
+                    applicationId={a.id}
+                    slotId={slotId}
+                    status={a.status}
+                  />
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -415,6 +473,7 @@ function ApplicationsTab({ apps }: { apps: ApplicationWithPlayer[] }) {
   );
 }
 
+// Obojeni labeli statusa prijave (prihvacen, lista cekanja, na cekanju, odbijen).
 function StatusPill({ status }: { status: Application["status"] }) {
   const map: Record<
     Application["status"],
@@ -425,7 +484,7 @@ function StatusPill({ status }: { status: Application["status"] }) {
       className: "bg-primary/15 text-primary border-primary/30",
     },
     waitlist: {
-      label: "Čekanje",
+      label: "Lista čekanja",
       className: "bg-accent/15 text-accent border-accent/30",
     },
     pending: {
@@ -471,6 +530,9 @@ function ChatTab({
   );
 }
 
+// Jedan igrac u listi: avatar, ime i pouzdanost. Boja procenta ide po ocjeni
+// (zeleno visoko, narandzasto srednje, crveno nisko). "muted" prigasi red za
+// listu cekanja.
 function PlayerRow({
   app,
   muted,

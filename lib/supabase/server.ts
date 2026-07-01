@@ -1,10 +1,16 @@
+// Dvije vrste Supabase klijenta za server. createClient postuje sesiju i RLS
+// (koristi se u akcijama i stranicama), createServiceClient preskace RLS i
+// sluzi samo za pozadinske poslove (cron, slanje mejlova).
+
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-export function createClient() {
-  const cookieStore = cookies();
+// Klijent vezan za sesiju ulogovanog korisnika (cita kolacice zahtjeva).
+// Ovo koristimo svuda gdje treba postovati RLS pravila baze.
+export async function createClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,7 +26,7 @@ export function createClient() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // Server Component - middleware refreshes the session.
+            // Server komponenta ne smije pisati kolacice, to radi proxy.
           }
         },
       },
@@ -28,6 +34,8 @@ export function createClient() {
   );
 }
 
+// Klijent sa service role kljucem koji preskace RLS.
+// Samo za server (cron, slanje mejlova), nikad ne smije do browsera.
 export function createServiceClient() {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

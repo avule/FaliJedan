@@ -1,3 +1,6 @@
+// Stranica gdje igrac vidi sve svoje prijave.
+// Dijeli ih na buduce i prosle da se lakse prati sta slijedi.
+
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -13,7 +16,7 @@ const STATUS_LABEL: Record<Application["status"], string> = {
   pending: "Na čekanju",
   accepted: "Prihvaćen",
   rejected: "Odbijen",
-  waitlist: "Waitlista",
+  waitlist: "Lista čekanja",
 };
 
 const STATUS_VARIANT: Record<
@@ -27,7 +30,7 @@ const STATUS_VARIANT: Record<
 };
 
 export default async function MyApplicationsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -43,12 +46,14 @@ export default async function MyApplicationsPage() {
     .returns<AppWithSlot[]>();
 
   const apps = (data ?? []).filter((a) => a.slot);
+  const now = Date.now();
 
+  // Buduce prijave idu gore, istorija ide u zaseban blok ispod.
   const upcoming = apps.filter(
-    (a) => a.slot && new Date(a.slot.scheduled_at).getTime() >= Date.now()
+    (a) => a.slot && new Date(a.slot.scheduled_at).getTime() >= now
   );
   const past = apps.filter(
-    (a) => a.slot && new Date(a.slot.scheduled_at).getTime() < Date.now()
+    (a) => a.slot && new Date(a.slot.scheduled_at).getTime() < now
   );
 
   return (
@@ -129,7 +134,7 @@ function ApplicationRow({ app }: { app: AppWithSlot }) {
                 {formatScheduledAt(slot.scheduled_at)}
               </p>
               <p className="text-xs text-muted-foreground">
-                📍 {slot.location_name}
+                {slot.location_name}
               </p>
             </div>
           </div>

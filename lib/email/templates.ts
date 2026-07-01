@@ -1,3 +1,7 @@
+// HTML sabloni za sve mejlove koje aplikacija salje (prihvacen, na cekanju,
+// slot pun, podsjetnik, otkazan, izbacen, upozorenje za nedolazak, ban).
+// Svaki vraca { subject, html }. Zajednicki ram daje wrap().
+
 import { format } from "date-fns";
 import { srLatn } from "date-fns/locale";
 import { SITE_URL } from "./resend";
@@ -40,7 +44,7 @@ export function applicationAcceptedEmail(args: {
       `
       <p>Zdravo ${args.playerName},</p>
       <p>Tvoja prijava na slot <strong>${args.slotTitle}</strong> je <strong style="color:#16a34a;">prihvaćena</strong>.</p>
-      <p>📍 ${args.locationName}<br>🕒 ${niceDate(args.scheduledAt)}</p>
+      <p>Lokacija: ${args.locationName}<br>Vrijeme: ${niceDate(args.scheduledAt)}</p>
       <p style="margin-top:24px;">
         <a href="${slotLink(args.slotId)}" style="background:#16a34a;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;">Otvori slot</a>
       </p>
@@ -55,12 +59,12 @@ export function applicationWaitlistedEmail(args: {
   slotId: string;
 }) {
   return {
-    subject: `Na waitlisti za "${args.slotTitle}"`,
+    subject: `Na listi čekanja za "${args.slotTitle}"`,
     html: wrap(
-      "Na waitlisti",
+      "Na listi čekanja",
       `
       <p>Zdravo ${args.playerName},</p>
-      <p>Slot <strong>${args.slotTitle}</strong> je trenutno popunjen, ali si na <strong>waitlisti</strong>. Ako se neko odjavi, javljamo ti odmah.</p>
+      <p>Slot <strong>${args.slotTitle}</strong> je trenutno popunjen, ali si na <strong>listi čekanja</strong>. Ako se neko odjavi, javljamo ti odmah.</p>
       <p style="margin-top:24px;">
         <a href="${slotLink(args.slotId)}" style="background:#16a34a;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;">Otvori slot</a>
       </p>
@@ -75,7 +79,7 @@ export function slotFullEmail(args: {
   slotId: string;
 }) {
   return {
-    subject: `Slot "${args.slotTitle}" je popunjen 🎉`,
+    subject: `Slot "${args.slotTitle}" je popunjen`,
     html: wrap(
       "Slot popunjen",
       `
@@ -103,7 +107,7 @@ export function reminder24hEmail(args: {
       `
       <p>Zdravo ${args.playerName},</p>
       <p>Podsjećamo te da sutra imaš zakazan slot:</p>
-      <p>🏃 <strong>${args.slotTitle}</strong><br>📍 ${args.locationName}<br>🕒 ${niceDate(args.scheduledAt)}</p>
+      <p><strong>${args.slotTitle}</strong><br>Lokacija: ${args.locationName}<br>Vrijeme: ${niceDate(args.scheduledAt)}</p>
       <p>Ako iz nekog razloga ne možeš doći, odjavi se <strong>najmanje 2h prije</strong> kako ne bi izgubio na pouzdanosti.</p>
       <p style="margin-top:24px;">
         <a href="${slotLink(args.slotId)}" style="background:#16a34a;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;">Otvori slot</a>
@@ -145,6 +149,27 @@ export function banEmail(args: {
       <p>Zdravo ${args.playerName},</p>
       <p>Zbog 4+ ne-pojavljivanja u zadnjih 30 dana, tvoj nalog je <strong>privremeno blokiran</strong> do <strong>${niceDate(args.endsAt)}</strong>.</p>
       <p>Tokom bana ne možeš se prijavljivati na slotove. Nakon isteka, pouzdanost se postepeno vraća kroz dolazak na mečeve.</p>
+    `
+    ),
+  };
+}
+
+export function slotCancelledEmail(args: {
+  playerName: string;
+  slotTitle: string;
+  scheduledAt: string;
+}) {
+  return {
+    subject: `Otkazan termin: "${args.slotTitle}"`,
+    html: wrap(
+      "Termin otkazan",
+      `
+      <p>Zdravo ${args.playerName},</p>
+      <p>Organizator je <strong style="color:#dc2626;">otkazao</strong> slot <strong>${args.slotTitle}</strong> koji je bio zakazan za ${niceDate(args.scheduledAt)}.</p>
+      <p>Tvoja pouzdanost nije pogođena. Pogledaj druge slotove i nađi novu igru.</p>
+      <p style="margin-top:24px;">
+        <a href="${SITE_URL}/igraj" style="background:#16a34a;color:white;padding:10px 18px;border-radius:6px;text-decoration:none;">Vidi slotove</a>
+      </p>
     `
     ),
   };

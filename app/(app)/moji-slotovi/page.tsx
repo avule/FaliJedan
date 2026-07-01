@@ -1,3 +1,6 @@
+// Pregled slotova koje je korisnik sam organizovao, podijeljeni na nadolazece
+// i prosle. Odavde organizator vodi svoje termine i potvrdjuje ko se pojavio.
+
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -14,7 +17,7 @@ type AppWithPlayer = Application & {
 };
 
 export default async function MySlotsPage() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -46,6 +49,7 @@ export default async function MySlotsPage() {
   }
 
   const slotsList = (slots ?? []) as Slot[];
+  const now = Date.now();
 
   return (
     <main className="container py-6">
@@ -83,8 +87,7 @@ export default async function MySlotsPage() {
             const slotApps = appsBySlot.get(slot.id) ?? [];
             const accepted = slotApps.filter((a) => a.status === "accepted");
             const waitlist = slotApps.filter((a) => a.status === "waitlist");
-            const isPast =
-              new Date(slot.scheduled_at).getTime() < Date.now();
+            const isPast = new Date(slot.scheduled_at).getTime() < now;
             const canConfirm =
               isPast && slot.status !== "done" && slot.status !== "cancelled";
 
@@ -107,7 +110,7 @@ export default async function MySlotsPage() {
                           {formatScheduledAt(slot.scheduled_at)}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          📍 {slot.location_name}
+                          {slot.location_name}
                         </p>
                       </div>
                     </div>
@@ -135,6 +138,7 @@ export default async function MySlotsPage() {
                     accepted={accepted}
                     waitlist={waitlist}
                     canConfirm={canConfirm}
+                    isPast={isPast}
                     isCancelled={slot.status === "cancelled"}
                     isDone={slot.status === "done"}
                   />

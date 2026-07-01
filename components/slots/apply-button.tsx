@@ -1,5 +1,9 @@
 "use client";
 
+// Dugme za prijavu/odjavu na slot, iz ugla igraca. Tekst i ponasanje zavise
+// od trenutnog statusa korisnika (nije prijavljen, prihvacen, na cekanju,
+// ceka odobrenje). Poziva server akciju i osvjezi stranicu.
+
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -31,7 +35,7 @@ export function ApplyButton({ slotId, myStatus, isOrganizer, isClosed }: Props) 
   if (isClosed) {
     return (
       <Button variant="secondary" disabled>
-        Slot zatvoren
+        Prijave zatvorene
       </Button>
     );
   }
@@ -44,32 +48,36 @@ export function ApplyButton({ slotId, myStatus, isOrganizer, isClosed }: Props) 
         onClick={() => {
           toast(
             myStatus === "waitlist"
-              ? "Skinuti se sa waitliste?"
-              : "Odjaviti se sa slota?",
+              ? "Skinuti se s liste čekanja?"
+              : "Odjaviti se s termina?",
             {
               action: {
-                label: "Da, odjavi me",
+                label: "Odjavi me",
                 onClick: () =>
                   start(async () => {
                     const res = await withdrawFromSlotAction(slotId);
                     if (res?.error) {
                       toast.error(res.error);
                     } else if (res?.late) {
-                      toast.warning("Odjavio si se manje od 2h prije meča", {
+                      toast.warning("Odjavio si se manje od 2h prije termina", {
                         description: "Pouzdanost je smanjena za 3%.",
                       });
                     } else {
-                      toast.success("Odjavljen si sa slota");
+                      toast.success("Odjavljen si s termina");
                     }
                     router.refresh();
                   }),
               },
-              cancel: { label: "Otkaži", onClick: () => {} },
+              cancel: { label: "Odustani", onClick: () => {} },
             }
           );
         }}
       >
-        {myStatus === "waitlist" ? "Na čekanju - odjavi se" : "Odjavi se"}
+        {myStatus === "waitlist"
+          ? "Na čekanju - povuci prijavu"
+          : myStatus === "pending"
+            ? "Čeka potvrdu - povuci prijavu"
+            : "Odjavi se"}
       </Button>
     );
   }
@@ -84,11 +92,15 @@ export function ApplyButton({ slotId, myStatus, isOrganizer, isClosed }: Props) 
             toast.error(res.error);
           } else if (res?.status === "waitlist") {
             toast.warning("Slot je pun", {
-              description: "Dodan si na waitlistu - javljamo ako se mjesto otvori.",
+              description: "Na listi čekanja si. Javljamo ako se mjesto otvori.",
+            });
+          } else if (res?.status === "pending") {
+            toast.success("Prijava poslana", {
+              description: "Organizator prvo potvrđuje prijave za takmičarski termin.",
             });
           } else {
             toast.success("Prihvaćen si!", {
-              description: "Vidimo se na terenu 🏃",
+              description: "Vidimo se na terenu.",
             });
           }
           router.refresh();

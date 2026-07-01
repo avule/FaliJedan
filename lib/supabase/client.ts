@@ -1,5 +1,8 @@
 "use client";
 
+// Supabase klijent za browser. Koristi se u klijentskim komponentama,
+// npr. za chat uzivo i upload avatara.
+
 import { createBrowserClient } from "@supabase/ssr";
 
 export function createClient() {

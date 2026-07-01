@@ -1,5 +1,8 @@
 "use client";
 
+// Prebacuje feed iz liste u mapu i obrnuto.
+// Stanje cuva u URL parametru da se link moze dijeliti.
+
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 
@@ -11,6 +14,7 @@ export function ViewToggle({ active }: { active: View }) {
   const searchParams = useSearchParams();
 
   function set(v: View) {
+    // Lista je podrazumijevana, zato brisemo parametar umjesto da ga zapisujemo.
     const params = new URLSearchParams(searchParams.toString());
     if (v === "list") params.delete("view");
     else params.set("view", v);

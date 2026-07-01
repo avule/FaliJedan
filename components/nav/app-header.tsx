@@ -1,5 +1,8 @@
 "use client";
 
+// Glavna navigacija u ulogovanom dijelu aplikacije.
+// Oznacava aktivnu rutu i prikazuje profil, nivo i odjavu.
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/lib/actions/auth";
@@ -17,11 +20,16 @@ const NAV = [
 export function AppHeader({
   name,
   avatarUrl,
+  level,
+  title,
 }: {
   name: string;
   avatarUrl?: string | null;
+  level?: number;
+  title?: string;
 }) {
   const pathname = usePathname();
+  // Aktivna stavka ostaje upaljena i na podstranicama.
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
 
@@ -56,10 +64,17 @@ export function AppHeader({
         <div className="flex items-center gap-3">
           <Link
             href="/profil"
-            className="hidden items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:flex"
+            className="hidden items-center gap-2.5 text-sm transition-opacity hover:opacity-80 sm:flex"
           >
             <Avatar src={avatarUrl} name={name} size="sm" highlight={!avatarUrl} />
-            <span className="hidden md:inline">{name}</span>
+            <span className="hidden leading-tight md:block">
+              <span className="block font-medium text-foreground">{name}</span>
+              {level !== undefined && title && (
+                <span className="block font-display text-[11px] uppercase tracking-wider text-primary">
+                  LVL {level} · {title}
+                </span>
+              )}
+            </span>
           </Link>
           <form action={logoutAction}>
             <Button variant="ghost" size="sm" type="submit">
@@ -69,7 +84,7 @@ export function AppHeader({
         </div>
       </div>
 
-      {/* Mobile nav */}
+      {/* Navigacija na telefonu */}
       <nav className="container scrollbar-thin flex items-center gap-1 overflow-x-auto pb-2 md:hidden">
         {NAV.map((item) => (
           <Link

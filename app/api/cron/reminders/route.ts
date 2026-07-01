@@ -1,15 +1,19 @@
+// Cron ruta za podsjetnike igracima dan prije termina.
+// Koristi service klijent jer radi bez ulogovanog korisnika.
+
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/email/resend";
 import { reminder24hEmail } from "@/lib/email/templates";
 
 /**
- * Vercel cron - runs hourly (see vercel.json).
- * Sends 24h reminder to every accepted player for slots starting in 23-25h.
+ * Vercel cron, vrti se svakog sata (vidi vercel.json).
+ * Salje podsjetnik 24h unaprijed svakom prihvacenom igracu za slotove koji
+ * pocinju za 23 do 25 sati.
  *
- * Auth: requires CRON_SECRET env var. If unset, route is locked down (403).
- * Idempotency: applications.reminder_sent_at is set after each send;
- * the query filters those out so a duplicate cron run never re-sends.
+ * Zastita: trazi CRON_SECRET. Ako nije postavljen, ruta je zakljucana (403).
+ * Bez duplih mejlova: poslije svakog slanja upisemo applications.reminder_sent_at,
+ * a upit izbacuje takve, pa ponovljeni cron nikad ne salje dva puta.
  */
 export const dynamic = "force-dynamic";
 
@@ -27,6 +31,8 @@ export async function GET(req: Request) {
 
   const admin = createServiceClient();
 
+  // Prozor od 23 do 25h hvata sve termine "za otprilike sutra u ovo doba",
+  // a posto cron ide svakog sata, svaki slot upadne tacno jednom.
   const now = Date.now();
   const from = new Date(now + 23 * 3600 * 1000).toISOString();
   const to = new Date(now + 25 * 3600 * 1000).toISOString();
@@ -46,7 +52,7 @@ export async function GET(req: Request) {
   let skipped = 0;
 
   for (const slot of slots ?? []) {
-    // Only fetch applications that haven't been reminded yet
+    // Uzmi samo prijave kojima podsjetnik jos nije poslat.
     const { data: apps } = await admin
       .from("applications")
       .select("id, player_id, reminder_sent_at, player:players(name)")
@@ -79,7 +85,7 @@ export async function GET(req: Request) {
       });
       await sendEmail({ to: email, ...m });
 
-      // Mark sent so a re-run doesn't double-send
+      // Upisi vrijeme slanja da ponovni cron ne posalje isti podsjetnik opet.
       await admin
         .from("applications")
         .update({ reminder_sent_at: new Date().toISOString() })

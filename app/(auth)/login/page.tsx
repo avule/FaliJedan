@@ -1,28 +1,29 @@
-import Link from "next/link";
-import { LoginForm } from "./login-form";
+// Login stranica je server omotac oko klijentske forme.
+// Forma obavlja samu prijavu kroz server akciju.
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: { next?: string };
-}) {
+import { LoginForm } from "./login-form";
+import { AuthShell } from "@/components/auth/auth-shell";
+
+const URL_ERRORS: Record<string, string> = {
+  missing_code: "Link za potvrdu je neispravan.",
+  confirm_failed: "Link je istekao ili je već iskorišten. Pošalji ponovo.",
+};
+
+export default async function LoginPage(
+  props: {
+    searchParams: Promise<{ next?: string; error?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const initialError = searchParams.error
+    ? URL_ERRORS[searchParams.error] ?? null
+    : null;
   return (
-    <main className="container flex min-h-screen items-center justify-center py-12">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Link href="/" className="text-2xl font-bold">
-            FaliJedan
-          </Link>
-          <p className="mt-2 text-muted-foreground">Prijavi se na nalog</p>
-        </div>
-        <LoginForm next={searchParams.next} />
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          Nemaš nalog?{" "}
-          <Link href="/register" className="text-primary hover:underline">
-            Registruj se
-          </Link>
-        </p>
-      </div>
-    </main>
+    <AuthShell active="prijava">
+      <LoginForm
+        next={searchParams.next}
+        initialError={initialError ?? undefined}
+      />
+    </AuthShell>
   );
 }

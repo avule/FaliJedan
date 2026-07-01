@@ -1,5 +1,8 @@
 "use client";
 
+// Dugmad koja organizator vidi na svom slotu: izmijeni i otkazi termin.
+// Otkazivanje trazi potvrdu jer salje mejl svim prihvacenim igracima.
+
 import Link from "next/link";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -26,9 +29,9 @@ export function SlotOrganizerActions({ slotId, isClosed }: Props) {
 
   function onCancel() {
     toast("Otkazati slot?", {
-      description: "Igrači se više neće moći prijavljivati.",
+      description: "Prijave se zatvaraju, a prihvaćeni igrači dobijaju obavještenje.",
       action: {
-        label: "Da, otkaži",
+        label: "Otkaži slot",
         onClick: () =>
           start(async () => {
             const res = await cancelSlotAction(slotId);
@@ -37,7 +40,7 @@ export function SlotOrganizerActions({ slotId, isClosed }: Props) {
             router.refresh();
           }),
       },
-      cancel: { label: "Nazad", onClick: () => {} },
+      cancel: { label: "Odustani", onClick: () => {} },
     });
   }
 
@@ -49,7 +52,12 @@ export function SlotOrganizerActions({ slotId, isClosed }: Props) {
       >
         Uredi slot
       </Link>
-      <Button variant="ghost" onClick={onCancel} disabled={pending}>
+      <Button
+        variant="ghost"
+        onClick={onCancel}
+        disabled={pending}
+        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+      >
         Otkaži slot
       </Button>
     </div>

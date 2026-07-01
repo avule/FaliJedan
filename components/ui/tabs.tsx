@@ -1,5 +1,7 @@
 "use client";
 
+// Tabovi koji stanje cuvaju u query parametru.
+
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
@@ -12,10 +14,10 @@ type Tab = {
 
 type Props = {
   tabs: Tab[];
-  /** Search-param key, defaults to "tab" */
+  // Ime query parametra, podrazumijevano tab.
   paramKey?: string;
   defaultKey?: string;
-  basePath: string; // e.g. "/slot/abc-123"
+  basePath: string; // npr. "/slot/abc123"
   className?: string;
 };
 

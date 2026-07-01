@@ -1,3 +1,6 @@
+// Prazno stanje feeda kad nema slotova za izabrane filtere.
+// Nudi reset filtera ili kreiranje prvog slota.
+
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
@@ -5,7 +8,7 @@ import { sportEmoji, sportLabel } from "@/lib/sports";
 
 type Props = {
   cityName?: string | null;
-  /** Active sport filter - drives the hero emoji */
+  // Aktivni sport odredjuje glavnu ikonicu.
   sport?: string | null;
 };
 
@@ -14,10 +17,10 @@ export function EmptyFeed({ cityName, sport }: Props) {
 
   return (
     <div className="relative flex min-h-[420px] items-center justify-center overflow-hidden rounded-xl border border-border bg-gradient-card p-10 md:p-16">
-      {/* Soft radial glow */}
+      {/* Meki sjaj u pozadini */}
       <div className="pointer-events-none absolute inset-0 bg-stadium-glow opacity-80" />
 
-      {/* Floating sport icons (decorative, subtle) */}
+      {/* Lebdece ikonice sportova */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <span
           className="absolute left-[8%] top-[18%] text-7xl opacity-[0.06] animate-ball-bounce"
@@ -49,7 +52,7 @@ export function EmptyFeed({ cityName, sport }: Props) {
         </span>
       </div>
 
-      {/* Diagonal jersey stripes */}
+      {/* Dijagonalne linije kao na dresu */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.04]"
         style={{
@@ -80,7 +83,7 @@ export function EmptyFeed({ cityName, sport }: Props) {
               : cityName
                 ? `Trenutno nema otvorenih slotova u gradu ${cityName} po ovim filterima.`
                 : "Trenutno nema otvorenih slotova po ovim filterima."}{" "}
-          Pokreni meč i drugi će se prijaviti.
+          Objavi prvi termin, možda baš neko čeka da se ekipa skupi.
         </p>
 
         <div className="mt-6 flex flex-wrap justify-center gap-3">

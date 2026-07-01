@@ -1,3 +1,6 @@
+// Server stranica za uredjivanje postojeceg slota.
+// Prije prikaza provjerava da slot postoji i da je korisnik organizator.
+
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -5,12 +8,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { EditSlotForm } from "./edit-slot-form";
 import type { Slot } from "@/types/database";
 
-export default async function EditSlotPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const supabase = createClient();
+export default async function EditSlotPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

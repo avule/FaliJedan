@@ -1,16 +1,15 @@
--- Avatars storage bucket - public read, owner-only write.
--- Files live at: avatars/{user_id}/{filename}
+-- avatari bucket: svi citaju, vlasnik pise. fajl: avatars/<uid>/<ime>
 
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
 
--- Public read
+-- svi citaju
 drop policy if exists "avatars_public_read" on storage.objects;
 create policy "avatars_public_read" on storage.objects
   for select using (bucket_id = 'avatars');
 
--- Owner uploads only into their own folder (avatars/<uid>/...)
+-- upload samo u svoj folder
 drop policy if exists "avatars_owner_insert" on storage.objects;
 create policy "avatars_owner_insert" on storage.objects
   for insert

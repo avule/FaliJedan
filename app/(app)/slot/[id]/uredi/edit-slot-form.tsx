@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+// Forma za izmjenu postojeceg slota. Slicna formi za kreiranje, ali popunjena
+// trenutnim podacima i bez izbora sporta. Broj mjesta se ne moze spustiti ispod
+// vec prijavljenih igraca, to provjerava i server akcija.
+
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,7 +33,7 @@ export function EditSlotForm({ slot }: { slot: Slot }) {
     new Date(slot.scheduled_at)
   );
 
-  const [state, formAction] = useFormState<UpdateSlotState, FormData>(
+  const [state, formAction] = useActionState<UpdateSlotState, FormData>(
     async (prev, fd) => {
       const res = await updateSlotAction(slot.id, prev, fd);
       if (res?.ok) {
@@ -46,7 +50,7 @@ export function EditSlotForm({ slot }: { slot: Slot }) {
   const scheduledIso = scheduledAt ? scheduledAt.toISOString() : "";
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4" noValidate>
       <div className="space-y-2">
         <Label htmlFor="title">Naslov</Label>
         <Input
@@ -95,7 +99,7 @@ export function EditSlotForm({ slot }: { slot: Slot }) {
         <p className="text-xs text-muted-foreground">
           Trenutno prijavljeno:{" "}
           <span className="tabular text-foreground">{slot.filled_spots}</span> -
-          ne možeš spustiti ispod toga
+          broj mjesta ne može ići ispod toga
         </p>
       </div>
 

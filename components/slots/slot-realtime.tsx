@@ -1,13 +1,12 @@
 "use client";
 
+// Slusa promjene na jednom slotu uzivo preko Supabase realtime kanala.
+// Kad se promijeni slot ili prijava, osvjezi detalj slota.
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-/**
- * Subscribes to a single slot's applications and slot row.
- * On any change → router.refresh() so RSC re-fetches.
- */
 export function SlotRealtime({ slotId }: { slotId: string }) {
   const router = useRouter();
 
@@ -35,7 +34,12 @@ export function SlotRealtime({ slotId }: { slotId: string }) {
         },
         () => router.refresh()
       )
-      .subscribe();
+      .subscribe((status) => {
+        // U dev konzoli se vidi da li je pretplata prosla.
+        if (process.env.NODE_ENV === "development") {
+          console.log("[realtime:slot]", status);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);

@@ -1,5 +1,8 @@
 "use client";
 
+// Mapa slotova u feedu i na stranama sa listama.
+// Racuna centar po markerima, a svaki pin dobija boju prema sportu.
+
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import Link from "next/link";
@@ -10,13 +13,11 @@ import { formatScheduledAt } from "@/lib/utils/format";
 import { BALKAN_CENTER, BALKAN_ZOOM, CITY_ZOOM } from "@/lib/cities";
 import type { Slot } from "@/types/database";
 
-// Sport-coloured div icons (no asset deps).
+// Ikone pina obojene po sportu, crtane u divu (bez slika kao zavisnosti).
 function buildIcon(sport: string) {
   const colors: Record<string, string> = {
     football: "#16a34a",
     basketball: "#ea580c",
-    tennis: "#eab308",
-    volleyball: "#2563eb",
     padel: "#db2777",
   };
   const bg = colors[sport] ?? "#6b7280";
@@ -32,12 +33,13 @@ function buildIcon(sport: string) {
 
 type Props = {
   slots: Slot[];
-  /** Optional fallback centre when there are no slots (e.g. user's home city). */
+  // Rezervni centar kad nema slotova, najcesce domaci grad korisnika.
   fallbackCenter?: [number, number];
 };
 
 export default function SlotsMap({ slots, fallbackCenter }: Props) {
   const { center, zoom } = useMemo(() => {
+    // Ako ima slotova, mapa se centrira na njihov prosjek.
     if (slots.length > 0) {
       const lat = slots.reduce((s, x) => s + x.lat, 0) / slots.length;
       const lng = slots.reduce((s, x) => s + x.lng, 0) / slots.length;

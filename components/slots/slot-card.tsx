@@ -1,3 +1,6 @@
+// Kartica jednog slota u feedu: sport, naziv, vrijeme, lokacija, koliko mjesta
+// fali i stack avatara prijavljenih. Cisto prikaz, bez logike, klik vodi na detalj.
+
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
@@ -14,23 +17,21 @@ type PreviewPlayer = {
 
 type Props = {
   slot: Slot & { city?: { name: string } | null };
-  /** First few accepted players for the avatar stack */
+  // Nekoliko prihvacenih igraca za prikaz avatara.
   acceptedPreview?: PreviewPlayer[];
 };
 
+// Sjaj i hover prsten kartice po sportu. Za "other" nema unosa, pa cn()
+// preskoci undefined i kartica ostane bez sjaja.
 const SPORT_GLOW: Record<string, string> = {
   football:   "from-sport-football/20",
   basketball: "from-sport-basketball/20",
-  tennis:     "from-sport-tennis/20",
-  volleyball: "from-sport-volleyball/20",
   padel:      "from-sport-padel/20",
 };
 
 const SPORT_RING: Record<string, string> = {
   football:   "group-hover:shadow-[0_0_32px_-4px_#22f56b66]",
   basketball: "group-hover:shadow-[0_0_32px_-4px_#ff8a3c66]",
-  tennis:     "group-hover:shadow-[0_0_32px_-4px_#fbe24a66]",
-  volleyball: "group-hover:shadow-[0_0_32px_-4px_#3b82f666]",
   padel:      "group-hover:shadow-[0_0_32px_-4px_#ec489966]",
 };
 
@@ -91,17 +92,16 @@ export function SlotCard({ slot, acceptedPreview = [] }: Props) {
             </div>
           </div>
 
-          <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <span aria-hidden>📍</span> {slot.location_name}
-            </span>
-            <span className="flex items-center gap-1 tabular">
-              <span aria-hidden>🕒</span> {formatScheduledAt(slot.scheduled_at)}
+          <div className="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="truncate">{slot.location_name}</span>
+            <span className="text-muted-foreground/50">·</span>
+            <span className="tabular">
+              {formatScheduledAt(slot.scheduled_at)}
             </span>
           </div>
 
           <div className="mt-4 flex items-center gap-3">
-            {/* Avatar stack */}
+            {/* Avatari prihvacenih igraca */}
             {visible.length > 0 ? (
               <div className="flex -space-x-2">
                 {visible.map((p) => (

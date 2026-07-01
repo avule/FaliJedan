@@ -1,5 +1,4 @@
--- Allow "Drugo" (other) sports with a free-text label.
--- When sport='other', custom_sport holds the user-typed sport name.
+-- sport "drugo" sa slobodnim nazivom. kad je sport='other', custom_sport drzi naziv
 
 alter table slots
   add column if not exists custom_sport text;
@@ -11,5 +10,5 @@ alter table slots
   )
   not valid;
 
--- Validate existing rows (none will fail since none use 'other' yet)
+-- provjeri postojece redove, nijedan nije 'other' pa prolazi
 alter table slots validate constraint custom_sport_required_when_other;
