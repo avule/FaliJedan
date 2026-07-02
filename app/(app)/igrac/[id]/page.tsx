@@ -57,7 +57,7 @@ export default async function PlayerProfilePage(
   const params = await props.params;
   const supabase = await createClient();
 
-  const { data: player } = await supabase
+  const { data: player, error: playerErr } = await supabase
     .from("players")
     .select("*, city:cities(name), country:countries(name)")
     .eq("id", params.id)
@@ -68,6 +68,7 @@ export default async function PlayerProfilePage(
       }
     >();
 
+  if (playerErr) throw playerErr; // blip -> osvjeziva greska, ne trajni 404
   if (!player) notFound();
 
   const [

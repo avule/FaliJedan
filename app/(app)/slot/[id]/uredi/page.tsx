@@ -20,12 +20,13 @@ export default async function EditSlotPage(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: slot } = await supabase
+  const { data: slot, error: slotErr } = await supabase
     .from("slots")
     .select("*")
     .eq("id", params.id)
     .maybeSingle<Slot>();
 
+  if (slotErr) throw slotErr; // blip -> osvjeziva greska, ne trajni 404
   if (!slot) notFound();
   if (slot.organizer_id !== user.id) {
     redirect(`/slot/${slot.id}`);
