@@ -5,11 +5,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Odredisna ruta za potvrdu mejla / magic link iz Supabase.
- *
- * Mejl sadrzi link na <sajt>/auth/callback?code=XYZ&next=/onboarding.
- * Ovdje kod razmijenimo za sesiju (server klijent postavi kolacice) pa
- * preusmjerimo na trazeno odrediste (za nove naloge to je /onboarding).
+ Odredisna ruta za potvrdu mejla / magic link iz Supabase.
+ Mejl sadrzi link na <sajt>/auth/callback?code=XYZ&next=/onboarding.
+ Ovdje kod razmijenimo za sesiju (server klijent postavi kolacice) pa
+ preusmjerimo na trazeno odrediste (za nove naloge to je /onboarding).
  */
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
